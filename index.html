@@ -7,147 +7,181 @@
     font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans",-apple-system,sans-serif;color:#eaf2ff;
     -webkit-user-select:none;user-select:none;touch-action:none}
   #stage{position:fixed;inset:0;overflow:hidden}
-  #bg{position:absolute;inset:0;background:#05070f center/cover no-repeat;
-    background-image:url("bg.jpg");filter:saturate(1.06) brightness(.96)}
-  .vig{position:absolute;inset:0;pointer-events:none;
-    background:radial-gradient(125% 100% at 50% 40%,transparent 50%,rgba(2,4,10,.6) 100%)}
-  .scan{position:absolute;inset:0;pointer-events:none;opacity:.06;
-    background:repeating-linear-gradient(180deg,#fff 0 1px,transparent 1px 3px)}
+  .bg{position:absolute;inset:0;background:#05070f center/cover no-repeat;filter:saturate(1.06) brightness(.96);
+    opacity:0;transition:opacity .5s}
+  .bg.on{opacity:1}
+  .vig{position:absolute;inset:0;pointer-events:none;background:radial-gradient(125% 100% at 50% 40%,transparent 50%,rgba(2,4,10,.6))}
+  .scan{position:absolute;inset:0;pointer-events:none;opacity:.05;background:repeating-linear-gradient(180deg,#fff 0 1px,transparent 1px 3px)}
 
-  /* hero */
-  #hero{position:absolute;left:50%;bottom:13%;width:13.5vw;min-width:150px;max-width:230px;z-index:4;
-    transform:translateX(-50%);transition:none;will-change:transform}
+  #hero{position:absolute;bottom:13%;width:13.5vw;min-width:140px;max-width:225px;z-index:4;left:50%}
   #hero img{width:100%;display:block;filter:drop-shadow(0 6px 14px rgba(0,0,0,.55)) drop-shadow(0 0 16px rgba(47,242,208,.18))}
-  #hsh{position:absolute;left:50%;bottom:12%;width:10vw;min-width:110px;max-width:170px;height:3.2vh;border-radius:50%;
-    background:radial-gradient(closest-side,rgba(0,0,0,.6),transparent);z-index:3;transform:translateX(-50%)}
-  #tag{position:absolute;left:50%;z-index:5;transform:translateX(-50%);
-    background:rgba(8,14,32,.72);border:1px solid rgba(126,249,230,.45);color:#bdfff4;
-    font-size:13px;font-weight:700;padding:4px 11px;border-radius:20px;white-space:nowrap}
+  #hsh{position:absolute;bottom:12%;width:10vw;min-width:100px;max-width:160px;height:3vh;border-radius:50%;
+    background:radial-gradient(closest-side,rgba(0,0,0,.6),transparent);z-index:3;left:50%}
+  #tag{position:absolute;z-index:5;background:rgba(8,14,32,.72);border:1px solid rgba(126,249,230,.45);color:#bdfff4;
+    font-size:13px;font-weight:700;padding:4px 11px;border-radius:20px;white-space:nowrap;left:50%;transform:translateX(-50%)}
 
-  /* HUD */
-  .hud{position:absolute;inset:0;z-index:10;pointer-events:none}
-  .pan{position:absolute;background:rgba(10,17,36,.6);backdrop-filter:blur(13px);-webkit-backdrop-filter:blur(13px);
-    border:1px solid rgba(126,200,255,.2);border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
-  .logo{position:absolute;top:18px;left:20px;font-weight:800;letter-spacing:.14em;font-size:clamp(15px,1.5vw,19px);
-    text-shadow:0 2px 10px rgba(0,0,0,.6)}
+  .pan{position:absolute;background:rgba(10,17,36,.62);backdrop-filter:blur(13px);-webkit-backdrop-filter:blur(13px);
+    border:1px solid rgba(126,200,255,.2);border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,.5);z-index:10}
+  .logo{top:18px;left:20px;padding:0;background:none;border:none;box-shadow:none;font-weight:800;letter-spacing:.14em;
+    font-size:clamp(15px,1.5vw,19px);text-shadow:0 2px 10px rgba(0,0,0,.7);position:absolute;z-index:10}
   .logo b{color:#2ff2d0}
-  .timer{top:16px;right:152px;padding:7px 15px;font-weight:800;font-size:clamp(15px,1.5vw,19px);color:#ffd86a;
-    font-variant-numeric:tabular-nums}
+  .stagei{top:46px;left:20px;font-size:12px;letter-spacing:.2em;color:#7fb0d8;position:absolute;z-index:10}
+  .timer{top:16px;right:150px;padding:7px 15px;font-weight:800;font-size:clamp(15px,1.5vw,19px);color:#ffd86a;font-variant-numeric:tabular-nums}
   .timer small{display:block;font-size:9px;letter-spacing:.2em;color:#9fb0d0}
-  .eb{position:absolute;top:16px;right:20px;pointer-events:auto;cursor:pointer;
-    background:linear-gradient(180deg,#ff4d7e,#d11d52);border:none;border-radius:13px;padding:11px 16px;
-    color:#fff;font-weight:800;font-size:14px;box-shadow:0 8px 20px rgba(209,29,82,.45)}
+  .eb{top:16px;right:20px;cursor:pointer;background:linear-gradient(180deg,#ff4d7e,#d11d52);border:none;border-radius:13px;
+    padding:11px 16px;color:#fff;font-weight:800;font-size:14px;position:absolute;z-index:10}
   .eb:active{transform:scale(.96)}
 
-  .tasks{top:74px;left:20px;width:min(60vw,256px);padding:14px 16px}
-  .tasks h3{font-size:11px;letter-spacing:.24em;color:#7fe9d6;font-weight:800;margin-bottom:10px}
-  .bar{height:7px;border-radius:6px;background:rgba(255,255,255,.1);overflow:hidden;margin-bottom:12px}
-  .bar i{display:block;height:100%;width:40%;border-radius:6px;background:linear-gradient(90deg,#2ff2d0,#1ea3ff);
-    box-shadow:0 0 12px rgba(47,242,208,.6);transition:width .4s}
-  .t{display:flex;align-items:center;gap:10px;font-size:14px;padding:6px 0;color:#dbe6fb}
+  .obj{top:86px;left:20px;width:min(64vw,272px);padding:14px 16px}
+  .obj h3{font-size:11px;letter-spacing:.24em;color:#7fe9d6;font-weight:800;margin-bottom:10px}
+  .row{display:flex;align-items:center;gap:10px;font-size:14px;padding:6px 0;color:#dbe6fb}
   .ck{width:19px;height:19px;border-radius:6px;flex:0 0 auto;border:1.5px solid rgba(126,200,255,.45);
     display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px}
   .ck.on{background:linear-gradient(180deg,#2ff2d0,#1aa98c);border-color:transparent;color:#04241d}
-  .t.done{color:#7d8aa6;text-decoration:line-through}
+  .row.done{color:#7d8aa6;text-decoration:line-through}
 
-  .puz{bottom:22px;right:22px;width:min(64vw,236px);padding:16px;pointer-events:auto}
-  .puz h4{font-size:11px;letter-spacing:.2em;color:#ff9ec6;font-weight:800;margin-bottom:6px}
-  .read{font-family:ui-monospace,monospace;font-size:28px;letter-spacing:.28em;color:#bdfff4;text-align:center;
-    background:#05131a;border:1px solid rgba(47,242,208,.32);border-radius:9px;padding:7px 0;margin-bottom:12px;
-    text-shadow:0 0 12px rgba(47,242,208,.5)}
+  /* task panel (right) */
+  .task{bottom:22px;right:22px;width:min(66vw,250px);padding:16px;text-align:center}
+  .task h4{font-size:11px;letter-spacing:.18em;color:#ff9ec6;font-weight:800;margin-bottom:10px}
+  .read{font-family:ui-monospace,monospace;font-size:26px;letter-spacing:.28em;color:#bdfff4;text-align:center;
+    background:#05131a;border:1px solid rgba(47,242,208,.32);border-radius:9px;padding:7px 0;margin-bottom:12px;text-shadow:0 0 12px rgba(47,242,208,.5)}
   .keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
   .key{aspect-ratio:1.5/1;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;
-    font-size:18px;font-weight:800;color:#dbe6fb;background:linear-gradient(180deg,#1a2748,#10192f);
-    border:1px solid rgba(126,200,255,.2)}
-  .key:active{transform:scale(.94)}
-  .key.ok{background:linear-gradient(180deg,#2ff2d0,#159e85);color:#04241d;border-color:transparent}
+    font-size:18px;font-weight:800;color:#dbe6fb;background:linear-gradient(180deg,#1a2748,#10192f);border:1px solid rgba(126,200,255,.2)}
+  .key:active{transform:scale(.94)} .key.ok{background:linear-gradient(180deg,#2ff2d0,#159e85);color:#04241d;border-color:transparent}
+  .act{width:100%;cursor:pointer;background:linear-gradient(180deg,#2ff2d0,#159e85);border:none;border-radius:12px;
+    padding:14px;color:#04241d;font-weight:800;font-size:15px;letter-spacing:.05em}
+  .act:active{transform:scale(.97)} .act:disabled{opacity:.5}
+  .pbar{height:8px;border-radius:6px;background:rgba(255,255,255,.12);overflow:hidden;margin-top:12px;display:none}
+  .pbar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#2ff2d0,#1ea3ff);transition:width .1s}
 
-  .prompt{bottom:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:9px;
-    padding:9px 16px;font-size:14px}
-  .kbd{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);border-radius:6px;
-    padding:2px 8px;font-weight:800;font-size:13px}
+  .prompt{bottom:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:9px;padding:10px 16px;font-size:14px;z-index:10}
+  .kbd{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);border-radius:6px;padding:2px 8px;font-weight:800;font-size:13px}
+  .door{bottom:34%;right:3vw;display:flex;align-items:center;gap:8px;padding:9px 14px;font-size:13px;font-weight:700;
+    color:#7dffb0;opacity:0;transition:opacity .3s;z-index:10}
+  .door.show{opacity:1;animation:pulse 1.2s infinite}
+  @keyframes pulse{50%{transform:translateY(-3px)}}
 
-  .hint{position:absolute;bottom:7px;left:0;right:0;text-align:center;font-size:12px;color:#8aa0c8;z-index:11}
+  #fade{position:absolute;inset:0;background:#05070f;opacity:0;transition:opacity .35s;pointer-events:none;z-index:30}
+  #fade.on{opacity:1}
+  #win{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 40%,#103b34,#04060e);text-align:center;gap:10px}
+  #win h1{font-size:42px;color:#7dffb0;text-shadow:0 0 24px rgba(125,255,176,.5)}
+  #win p{color:#bcd}
+  #win button{margin-top:14px;cursor:pointer;background:linear-gradient(180deg,#2ff2d0,#159e85);border:none;border-radius:30px;
+    padding:13px 34px;color:#04241d;font-weight:800;font-size:16px}
+  .hint{position:absolute;bottom:6px;left:0;right:0;text-align:center;font-size:12px;color:#8aa0c8;z-index:11}
 </style>
 
 <div id="stage">
-  <div id="bg"></div>
+  <div class="bg" id="bg"></div>
+  <div class="vig"></div><div class="scan"></div>
   <div id="hsh"></div>
   <div id="hero"><img src="hero.png" alt="Torahachi"></div>
   <div id="tag">トラはち</div>
-  <div class="vig"></div><div class="scan"></div>
 
-  <div class="hud">
-    <div class="logo">N/I <b>ESCAPE</b></div>
-    <div class="pan timer"><small>O2 REMAINING</small><span id="clock">04:38</span></div>
-    <button class="eb" id="eb">⚠ 緊急会議</button>
+  <div class="logo">N/I <b>ESCAPE</b></div>
+  <div class="stagei" id="stagei">STAGE 1 / 4</div>
+  <div class="pan timer"><small>O2 REMAINING</small><span id="clock">05:00</span></div>
+  <button class="pan eb" id="eb">⚠ 緊急会議</button>
 
-    <div class="pan tasks">
-      <h3 id="th">TASKS &nbsp; 2 / 5</h3>
-      <div class="bar"><i id="bar"></i></div>
-      <div class="t done"><span class="ck on">✓</span>電源を復旧する</div>
-      <div class="t done"><span class="ck on">✓</span>カードキーを発見</div>
-      <div class="t"><span class="ck"></span>配線を正しくつなぐ</div>
-      <div class="t"><span class="ck"></span>暗号コードを解読</div>
-      <div class="t"><span class="ck"></span>酸素ダクトを開放</div>
-    </div>
-
-    <div class="pan puz">
-      <h4>SECURITY KEYPAD</h4>
-      <div class="read" id="read">_ _ _ _</div>
-      <div class="keys" id="keys"></div>
-    </div>
-
-    <div class="pan prompt"><span class="kbd">← →</span> 歩く ／ キーパッドを押す</div>
+  <div class="pan obj">
+    <h3 id="objh">MISSION</h3>
+    <div class="row" id="objrow"><span class="ck" id="objck"></span><span id="objname">…</span></div>
   </div>
-  <div class="hint">これは試作画面です（矢印キーで歩けます／キーパッドを押せます）</div>
+
+  <div class="pan task" id="taskpan"></div>
+
+  <div class="pan door" id="door">⮕ 右の扉から次の部屋へ</div>
+  <div class="pan prompt"><span class="kbd">← →</span> 歩く</div>
+  <div class="hint">矢印キーで移動／課題をクリアして扉へ</div>
+
+  <div id="fade"></div>
+  <div id="win">
+    <h1>ESCAPE SUCCESS</h1>
+    <p>全4ステージを突破した！（※これは試作版です）</p>
+    <button onclick="location.reload()">もう一度</button>
+  </div>
 </div>
 
 <script>
 (function(){
-  // ---- hero walk + idle bob ----
-  var hero=document.getElementById('hero'), sh=document.getElementById('hsh'), tag=document.getElementById('tag');
-  var x=50, face=1, t=0, moving=false, keys={};
-  addEventListener('keydown',e=>{var k=e.key;keys[k]=1;if(k.indexOf('Arrow')===0){e.preventDefault();}},{passive:false});
+  var STAGES=[
+    {bg:'bg1.jpg', name:'暗号コードを解読', type:'keypad', code:'7391'},
+    {bg:'bg2.jpg', name:'配線を修復する',   type:'work',  label:'配線をつなぐ'},
+    {bg:'bg3.jpg', name:'酸素ダクトを開放', type:'work',  label:'バルブを回す'},
+    {bg:'bg4.jpg', name:'脱出コアを起動',   type:'work',  label:'コアを起動'}
+  ];
+  var si=0, done=false, locked=false;
+  var bg=document.getElementById('bg'), fade=document.getElementById('fade');
+  var hero=document.getElementById('hero'), hsh=document.getElementById('hsh'), tag=document.getElementById('tag');
+  var objh=document.getElementById('objh'), objname=document.getElementById('objname'),
+      objck=document.getElementById('objck'), objrow=document.getElementById('objrow'),
+      taskpan=document.getElementById('taskpan'), door=document.getElementById('door'),
+      stagei=document.getElementById('stagei');
+
+  function loadStage(){
+    var s=STAGES[si]; done=false;
+    bg.style.backgroundImage='url("'+s.bg+'")';
+    stagei.textContent='STAGE '+(si+1)+' / 4';
+    objname.textContent=s.name; objck.className='ck'; objck.textContent=''; objrow.className='row';
+    door.classList.remove('show');
+    buildTask(s);
+    x=15; // 左から登場
+  }
+  function complete(){
+    done=true; objck.className='ck on'; objck.textContent='✓'; objrow.className='row done';
+    door.classList.add('show'); taskpan.innerHTML='<h4 style="color:#7dffb0">CLEAR ✓</h4>';
+  }
+  function buildTask(s){
+    if(s.type==='keypad'){
+      taskpan.innerHTML='<h4>SECURITY KEYPAD（'+s.code+'）</h4><div class="read" id="read">_ _ _ _</div><div class="keys" id="keys"></div>';
+      var code='', read=document.getElementById('read'), keys=document.getElementById('keys');
+      for(var n=1;n<=9;n++){(function(n){var d=document.createElement('div');d.className='key';d.textContent=n;
+        d.onclick=function(){ if(done||code.length>=4)return; code+=n; r();
+          if(code.length===4){ if(code===s.code){ [].forEach.call(keys.children,function(k){k.classList.add('ok');}); complete(); }
+            else setTimeout(function(){code='';r();},420);} };
+        keys.appendChild(d);})(n);}
+      function r(){var a=code.split('');while(a.length<4)a.push('_');read.textContent=a.join(' ');}
+    } else {
+      taskpan.innerHTML='<h4>'+s.name.toUpperCase()+'</h4><button class="act" id="act">'+s.label+'</button><div class="pbar" id="pbar"><i></i></div>';
+      var act=document.getElementById('act'), pbar=document.getElementById('pbar'), fill=pbar.firstChild;
+      act.onclick=function(){ if(done)return; act.disabled=true; pbar.style.display='block'; var p=0;
+        var iv=setInterval(function(){ p+=4; fill.style.width=p+'%'; if(p>=100){clearInterval(iv); complete();} },45); };
+    }
+  }
+  function nextStage(){
+    if(si>=STAGES.length-1){ win(); return; }
+    locked=true; fade.classList.add('on');
+    setTimeout(function(){ si++; loadStage(); fade.classList.remove('on'); locked=false; }, 380);
+  }
+  function win(){ document.getElementById('win').style.display='flex'; }
+
+  // ---- walk loop ----
+  var x=15, face=1, t=0, keys={};
+  addEventListener('keydown',e=>{var k=e.key;keys[k]=1;if(k.indexOf('Arrow')===0)e.preventDefault();},{passive:false});
   addEventListener('keyup',e=>keys[e.key]=0);
   function frame(){
-    t+=1; var mv=0;
-    if(keys['ArrowLeft']||keys['a']) mv=-1;
-    if(keys['ArrowRight']||keys['d']) mv=1;
-    moving = mv!==0;
-    if(mv){ x=Math.max(16,Math.min(84,x+mv*0.55)); face=mv>0?1:-1; }
-    var bob = moving ? Math.abs(Math.sin(t*0.32))*10 : Math.sin(t*0.06)*3;        // 歩行ホップ / 待機の呼吸
-    var tilt = moving ? Math.sin(t*0.32)*3 : Math.sin(t*0.06)*1.2;
+    t++; var mv=0;
+    if(!locked){ if(keys['ArrowLeft']||keys['a'])mv=-1; if(keys['ArrowRight']||keys['d'])mv=1; }
+    if(mv){ x=Math.max(12,Math.min(88,x+mv*0.5)); face=mv>0?1:-1;
+      if(mv>0 && x>=87 && done) nextStage(); }
+    var moving=mv!==0;
+    var bob=moving?Math.abs(Math.sin(t*0.3))*9:Math.sin(t*0.05)*3;
+    var tilt=moving?Math.sin(t*0.3)*2.5:Math.sin(t*0.05)*1;
     hero.style.left=x+'vw';
     hero.style.transform='translateX(-50%) translateY(-'+bob+'px) rotate('+tilt+'deg) scaleX('+face+')';
-    sh.style.left=x+'vw';
-    sh.style.transform='translateX(-50%) scale('+(moving?0.92:1)+')';
+    hsh.style.left=x+'vw'; hsh.style.transform='translateX(-50%) scale('+(moving?0.9:1)+')';
     tag.style.left=x+'vw'; tag.style.bottom='calc(13% + '+(hero.offsetHeight+6)+'px)';
     requestAnimationFrame(frame);
   }
-  requestAnimationFrame(frame);
 
-  // ---- O2 timer countdown ----
-  var sec=4*60+38, clock=document.getElementById('clock');
-  setInterval(function(){ if(sec>0)sec--; var m=Math.floor(sec/60), s=sec%60;
-    clock.textContent=m+':'+(s<10?'0':'')+s; }, 1000);
+  // O2 timer
+  var sec=300, clk=document.getElementById('clock');
+  setInterval(function(){ if(sec>0)sec--; var m=Math.floor(sec/60),s=sec%60; clk.textContent=m+':'+(s<10?'0':'')+s; },1000);
+  document.getElementById('eb').onclick=function(){ alert('緊急会議：本番では全員集合→議論→投票で1人を追放します'); };
 
-  // ---- keypad puzzle (enter 7 3 9 1) ----
-  var code='', answer='7391', read=document.getElementById('read'), keysEl=document.getElementById('keys');
-  var th=document.getElementById('th'), bar=document.getElementById('bar');
-  for(var n=1;n<=9;n++){ (function(n){var d=document.createElement('div');d.className='key';d.textContent=n;
-    d.onclick=function(){ if(code.length>=4)return; code+=n; render();
-      if(code.length===4){ if(code===answer){ solved(); } else { setTimeout(function(){code='';render();},500); } } };
-    keysEl.appendChild(d); })(n); }
-  function render(){ var a=code.split(''); while(a.length<4)a.push('_'); read.textContent=a.join(' '); }
-  function solved(){ read.textContent='✔ UNLOCK'; read.style.color='#7dffb0';
-    [].forEach.call(keysEl.children,function(k){k.classList.add('ok');});
-    th.textContent='TASKS   3 / 5'; bar.style.width='60%';
-    document.querySelectorAll('.t')[3].classList.add('done');
-    document.querySelectorAll('.t')[3].querySelector('.ck').classList.add('on');
-    document.querySelectorAll('.t')[3].querySelector('.ck').textContent='✓'; }
-  render();
-
-  document.getElementById('eb').onclick=function(){ alert('緊急会議（本番では全員集合→議論→投票で追放）'); };
+  // start
+  bg.classList.add('on'); loadStage(); requestAnimationFrame(frame);
 })();
 </script>
