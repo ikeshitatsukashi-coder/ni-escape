@@ -1,212 +1,153 @@
 <!doctype html><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>N/I ESCAPE — style sample</title>
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>N/I ESCAPE</title>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
-  html,body{height:100%;background:#05070f;overflow:hidden;font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans",-apple-system,sans-serif;color:#eaf2ff}
-  #stage{position:relative;width:100vw;height:100vh;overflow:hidden;
-    background:
-      radial-gradient(120% 80% at 50% -10%, #14224a 0%, #0a1430 38%, #060a18 70%, #04060e 100%);}
-
-  /* ---- room ---- */
-  .wall{position:absolute;inset:0}
-  .strip{position:absolute;top:6%;width:5px;height:46%;border-radius:4px;
-    background:linear-gradient(#7ef9e6,#1ea3ff);box-shadow:0 0 16px 3px rgba(110,249,230,.55)}
-  .strip.m{background:linear-gradient(#ff8fd0,#ff2e88);box-shadow:0 0 16px 3px rgba(255,77,160,.5)}
-  /* sealed door */
-  .door{position:absolute;left:50%;top:11%;transform:translateX(-50%);width:300px;height:300px;
-    border-radius:160px 160px 14px 14px;
-    background:linear-gradient(180deg,#1b2950,#0e1730);
-    border:2px solid rgba(120,200,255,.25);
-    box-shadow:inset 0 0 60px rgba(0,0,0,.6), 0 0 50px rgba(40,90,180,.25)}
-  .door::before{content:"";position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);
-    width:120px;height:120px;border-radius:50%;border:3px solid rgba(126,249,230,.5);
-    box-shadow:0 0 26px rgba(126,249,230,.45),inset 0 0 26px rgba(126,249,230,.3)}
-  .door::after{content:"";position:absolute;left:50%;top:46%;transform:translate(-50%,-50%);
-    width:54px;height:54px;border-radius:50%;background:radial-gradient(circle,#bdfff4,#2ff2d0 60%,transparent);
-    box-shadow:0 0 30px #2ff2d0}
-  .doorlock{position:absolute;left:50%;top:80%;transform:translateX(-50%);font-size:13px;letter-spacing:.18em;
-    color:#ff6aa6;text-shadow:0 0 10px rgba(255,77,160,.6)}
-
-  /* floor */
-  .floor{position:absolute;left:-10%;right:-10%;bottom:-2%;height:46%;
-    background:linear-gradient(180deg,#0c1733 0%, #0a1228 60%, #070c1c 100%);
-    transform:perspective(620px) rotateX(58deg);transform-origin:bottom center;
-    border-top:2px solid rgba(120,200,255,.18)}
-  .grid{position:absolute;inset:0;
-    background-image:linear-gradient(rgba(126,249,230,.16) 1px,transparent 1px),
-                     linear-gradient(90deg,rgba(126,249,230,.12) 1px,transparent 1px);
-    background-size:64px 64px;mask-image:linear-gradient(180deg,transparent,#000 40%)}
-
-  /* console (puzzle hint) */
-  .console{position:absolute;left:5.5%;bottom:30%;width:200px;height:128px;border-radius:14px;
-    background:linear-gradient(180deg,#16223f,#0c1428);border:1px solid rgba(120,200,255,.22);
-    box-shadow:0 18px 40px rgba(0,0,0,.5);transform:perspective(700px) rotateY(20deg)}
-  .console .scr{position:absolute;inset:14px;border-radius:9px;background:#05131a;overflow:hidden;
-    box-shadow:inset 0 0 22px rgba(47,242,208,.25);border:1px solid rgba(47,242,208,.35)}
-  .wire{position:absolute;height:5px;border-radius:4px}
-  /* vent */
-  .vent{position:absolute;right:6%;bottom:24%;width:104px;height:74px;border-radius:10px;
-    background:repeating-linear-gradient(180deg,#1a2238 0 9px,#0c1222 9px 16px);
-    border:1px solid rgba(120,140,180,.3);box-shadow:0 10px 26px rgba(0,0,0,.5);transform:perspective(700px) rotateY(-22deg)}
-  .vent .eye{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:8px;height:8px;border-radius:50%;
-    background:#ff2e88;box-shadow:0 0 14px 4px rgba(255,46,136,.8);animation:blink 2.4s infinite}
-  @keyframes blink{0%,92%,100%{opacity:1}96%{opacity:.2}}
+  html,body{height:100%;overflow:hidden;background:#05070f;
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans",-apple-system,sans-serif;color:#eaf2ff;
+    -webkit-user-select:none;user-select:none;touch-action:none}
+  #stage{position:fixed;inset:0;overflow:hidden}
+  #bg{position:absolute;inset:0;background:#05070f center/cover no-repeat;
+    background-image:url("bg.jpg");filter:saturate(1.06) brightness(.96)}
+  .vig{position:absolute;inset:0;pointer-events:none;
+    background:radial-gradient(125% 100% at 50% 40%,transparent 50%,rgba(2,4,10,.6) 100%)}
+  .scan{position:absolute;inset:0;pointer-events:none;opacity:.06;
+    background:repeating-linear-gradient(180deg,#fff 0 1px,transparent 1px 3px)}
 
   /* hero */
-  .hero{position:absolute;left:50%;bottom:14%;transform:translateX(-50%);width:200px;z-index:4;
-    filter:drop-shadow(0 0 18px rgba(126,249,230,.25))}
-  .hero img{width:100%;display:block;filter:saturate(1.05) contrast(1.03)}
-  .heroshadow{position:absolute;left:50%;bottom:13%;transform:translateX(-50%);width:150px;height:34px;border-radius:50%;
-    background:radial-gradient(closest-side,rgba(0,0,0,.55),transparent);z-index:3}
-  /* name tag */
-  .tag{position:absolute;left:50%;bottom:43%;transform:translateX(-50%);z-index:5;
-    background:rgba(10,18,40,.7);backdrop-filter:blur(6px);border:1px solid rgba(126,249,230,.4);
-    color:#bdfff4;font-size:13px;font-weight:700;letter-spacing:.04em;padding:5px 12px;border-radius:20px;
-    box-shadow:0 4px 14px rgba(0,0,0,.4)}
+  #hero{position:absolute;left:50%;bottom:13%;width:13.5vw;min-width:150px;max-width:230px;z-index:4;
+    transform:translateX(-50%);transition:none;will-change:transform}
+  #hero img{width:100%;display:block;filter:drop-shadow(0 6px 14px rgba(0,0,0,.55)) drop-shadow(0 0 16px rgba(47,242,208,.18))}
+  #hsh{position:absolute;left:50%;bottom:12%;width:10vw;min-width:110px;max-width:170px;height:3.2vh;border-radius:50%;
+    background:radial-gradient(closest-side,rgba(0,0,0,.6),transparent);z-index:3;transform:translateX(-50%)}
+  #tag{position:absolute;left:50%;z-index:5;transform:translateX(-50%);
+    background:rgba(8,14,32,.72);border:1px solid rgba(126,249,230,.45);color:#bdfff4;
+    font-size:13px;font-weight:700;padding:4px 11px;border-radius:20px;white-space:nowrap}
 
-  /* vignette / atmosphere */
-  .vig{position:absolute;inset:0;pointer-events:none;
-    background:radial-gradient(120% 90% at 50% 42%,transparent 52%,rgba(2,4,10,.55) 100%)}
-  .dust{position:absolute;inset:0;pointer-events:none;opacity:.5;
-    background-image:radial-gradient(2px 2px at 20% 30%,rgba(126,249,230,.5),transparent),
-      radial-gradient(2px 2px at 70% 60%,rgba(255,143,208,.45),transparent),
-      radial-gradient(1.5px 1.5px at 45% 20%,rgba(255,255,255,.5),transparent),
-      radial-gradient(1.5px 1.5px at 85% 35%,rgba(126,249,230,.4),transparent),
-      radial-gradient(2px 2px at 30% 70%,rgba(255,255,255,.35),transparent)}
+  /* HUD */
+  .hud{position:absolute;inset:0;z-index:10;pointer-events:none}
+  .pan{position:absolute;background:rgba(10,17,36,.6);backdrop-filter:blur(13px);-webkit-backdrop-filter:blur(13px);
+    border:1px solid rgba(126,200,255,.2);border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,.5)}
+  .logo{position:absolute;top:18px;left:20px;font-weight:800;letter-spacing:.14em;font-size:clamp(15px,1.5vw,19px);
+    text-shadow:0 2px 10px rgba(0,0,0,.6)}
+  .logo b{color:#2ff2d0}
+  .timer{top:16px;right:152px;padding:7px 15px;font-weight:800;font-size:clamp(15px,1.5vw,19px);color:#ffd86a;
+    font-variant-numeric:tabular-nums}
+  .timer small{display:block;font-size:9px;letter-spacing:.2em;color:#9fb0d0}
+  .eb{position:absolute;top:16px;right:20px;pointer-events:auto;cursor:pointer;
+    background:linear-gradient(180deg,#ff4d7e,#d11d52);border:none;border-radius:13px;padding:11px 16px;
+    color:#fff;font-weight:800;font-size:14px;box-shadow:0 8px 20px rgba(209,29,82,.45)}
+  .eb:active{transform:scale(.96)}
 
-  /* ---------- HUD ---------- */
-  .hud{position:absolute;inset:0;pointer-events:none;z-index:10}
-  .panel{background:rgba(12,20,42,.62);backdrop-filter:blur(14px);
-    border:1px solid rgba(126,200,255,.18);border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.45)}
-
-  /* top bar */
-  .top{position:absolute;top:20px;left:22px;right:22px;display:flex;align-items:center;justify-content:space-between}
-  .logo{display:flex;align-items:center;gap:10px;font-weight:800;letter-spacing:.14em;font-size:18px;color:#eaf2ff}
-  .logo b{color:#2ff2d0;text-shadow:0 0 14px rgba(47,242,208,.6)}
-  .topR{display:flex;align-items:center;gap:14px}
-  .timer{padding:8px 16px;font-variant-numeric:tabular-nums;font-weight:800;font-size:18px;color:#ffd86a;
-    letter-spacing:.05em}
-  .timer small{display:block;font-size:9px;letter-spacing:.25em;color:#9fb0d0;font-weight:700}
-  .ebtn{pointer-events:auto;display:flex;align-items:center;gap:9px;background:linear-gradient(180deg,#ff4d7e,#d11d52);
-    border:none;border-radius:14px;padding:11px 18px;color:#fff;font-weight:800;font-size:14px;letter-spacing:.06em;
-    box-shadow:0 8px 22px rgba(209,29,82,.45),inset 0 1px 0 rgba(255,255,255,.25);cursor:pointer}
-  .ebtn svg{width:18px;height:18px}
-
-  /* task panel */
-  .tasks{position:absolute;top:84px;left:22px;width:268px;padding:16px 18px}
-  .tasks h3{font-size:11px;letter-spacing:.28em;color:#7fe9d6;font-weight:800;margin-bottom:12px;display:flex;align-items:center;gap:8px}
-  .bar{height:7px;border-radius:6px;background:rgba(255,255,255,.1);overflow:hidden;margin-bottom:14px}
+  .tasks{top:74px;left:20px;width:min(60vw,256px);padding:14px 16px}
+  .tasks h3{font-size:11px;letter-spacing:.24em;color:#7fe9d6;font-weight:800;margin-bottom:10px}
+  .bar{height:7px;border-radius:6px;background:rgba(255,255,255,.1);overflow:hidden;margin-bottom:12px}
   .bar i{display:block;height:100%;width:40%;border-radius:6px;background:linear-gradient(90deg,#2ff2d0,#1ea3ff);
-    box-shadow:0 0 12px rgba(47,242,208,.6)}
-  .task{display:flex;align-items:center;gap:11px;font-size:14px;padding:7px 0;color:#dbe6fb}
-  .ck{width:20px;height:20px;border-radius:7px;flex:0 0 auto;display:flex;align-items:center;justify-content:center;
-    border:1.5px solid rgba(126,200,255,.4)}
+    box-shadow:0 0 12px rgba(47,242,208,.6);transition:width .4s}
+  .t{display:flex;align-items:center;gap:10px;font-size:14px;padding:6px 0;color:#dbe6fb}
+  .ck{width:19px;height:19px;border-radius:6px;flex:0 0 auto;border:1.5px solid rgba(126,200,255,.45);
+    display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px}
   .ck.on{background:linear-gradient(180deg,#2ff2d0,#1aa98c);border-color:transparent;color:#04241d}
-  .ck svg{width:12px;height:12px}
-  .task.done{color:#7d8aa6;text-decoration:line-through;text-decoration-color:rgba(125,138,166,.6)}
+  .t.done{color:#7d8aa6;text-decoration:line-through}
 
-  /* minimap */
-  .map{position:absolute;bottom:22px;left:22px;width:230px;height:128px;padding:0;overflow:hidden}
-  .map svg{width:100%;height:100%;display:block}
+  .puz{bottom:22px;right:22px;width:min(64vw,236px);padding:16px;pointer-events:auto}
+  .puz h4{font-size:11px;letter-spacing:.2em;color:#ff9ec6;font-weight:800;margin-bottom:6px}
+  .read{font-family:ui-monospace,monospace;font-size:28px;letter-spacing:.28em;color:#bdfff4;text-align:center;
+    background:#05131a;border:1px solid rgba(47,242,208,.32);border-radius:9px;padding:7px 0;margin-bottom:12px;
+    text-shadow:0 0 12px rgba(47,242,208,.5)}
+  .keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .key{aspect-ratio:1.5/1;border-radius:10px;display:flex;align-items:center;justify-content:center;cursor:pointer;
+    font-size:18px;font-weight:800;color:#dbe6fb;background:linear-gradient(180deg,#1a2748,#10192f);
+    border:1px solid rgba(126,200,255,.2)}
+  .key:active{transform:scale(.94)}
+  .key.ok{background:linear-gradient(180deg,#2ff2d0,#159e85);color:#04241d;border-color:transparent}
 
-  /* keypad puzzle modal */
-  .puz{position:absolute;right:34px;bottom:30px;width:250px;padding:18px}
-  .puz h4{font-size:11px;letter-spacing:.24em;color:#ff9ec6;font-weight:800;margin-bottom:4px}
-  .puz .read{font-family:ui-monospace,monospace;font-size:30px;letter-spacing:.32em;color:#bdfff4;
-    text-shadow:0 0 14px rgba(47,242,208,.55);margin:6px 0 14px;text-align:center;
-    background:#05131a;border:1px solid rgba(47,242,208,.3);border-radius:10px;padding:8px 0}
-  .keys{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
-  .key{aspect-ratio:1.5/1;border-radius:11px;display:flex;align-items:center;justify-content:center;
-    font-size:19px;font-weight:800;color:#dbe6fb;
-    background:linear-gradient(180deg,#1a2748,#10192f);border:1px solid rgba(126,200,255,.18);
-    box-shadow:inset 0 1px 0 rgba(255,255,255,.08),0 4px 10px rgba(0,0,0,.4)}
-  .key.hot{background:linear-gradient(180deg,#2ff2d0,#159e85);color:#04241d;border-color:transparent;
-    box-shadow:0 0 18px rgba(47,242,208,.6)}
+  .prompt{bottom:20px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:9px;
+    padding:9px 16px;font-size:14px}
+  .kbd{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);border-radius:6px;
+    padding:2px 8px;font-weight:800;font-size:13px}
 
-  /* interaction prompt */
-  .prompt{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:10px;
-    padding:10px 18px;font-size:14px;color:#eaf2ff}
-  .prompt .kbd{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.25);border-radius:7px;
-    padding:2px 9px;font-weight:800;font-size:13px}
+  .hint{position:absolute;bottom:7px;left:0;right:0;text-align:center;font-size:12px;color:#8aa0c8;z-index:11}
 </style>
 
 <div id="stage">
-  <div class="wall">
-    <div class="strip"   style="left:14%"></div>
-    <div class="strip m" style="left:24%"></div>
-    <div class="strip"   style="right:24%"></div>
-    <div class="strip m" style="right:14%"></div>
-    <div class="door"><div class="doorlock">⬡ LOCKED</div></div>
-  </div>
+  <div id="bg"></div>
+  <div id="hsh"></div>
+  <div id="hero"><img src="hero.png" alt="Torahachi"></div>
+  <div id="tag">トラはち</div>
+  <div class="vig"></div><div class="scan"></div>
 
-  <div class="console"><div class="scr">
-    <div class="wire" style="left:14px;top:18px;width:64px;background:linear-gradient(90deg,#ff4d7e,#ff8fd0);box-shadow:0 0 10px #ff4d7e"></div>
-    <div class="wire" style="left:14px;top:40px;width:90px;background:linear-gradient(90deg,#2ff2d0,#7ef9e6);box-shadow:0 0 10px #2ff2d0"></div>
-    <div class="wire" style="left:14px;top:62px;width:48px;background:linear-gradient(90deg,#ffd86a,#ffb02e);box-shadow:0 0 10px #ffd86a"></div>
-    <div class="wire" style="right:14px;top:18px;width:40px;background:#2ff2d0;box-shadow:0 0 10px #2ff2d0"></div>
-    <div class="wire" style="right:14px;top:40px;width:40px;background:#ff4d7e;box-shadow:0 0 10px #ff4d7e"></div>
-    <div class="wire" style="right:14px;top:62px;width:40px;background:#ffd86a;box-shadow:0 0 10px #ffd86a"></div>
-  </div></div>
-
-  <div class="vent"><div class="eye"></div></div>
-
-  <div class="floor"><div class="grid"></div></div>
-
-  <div class="tag">トラはち</div>
-  <div class="heroshadow"></div>
-  <div class="hero"><img src="hero.png" alt="hero"></div>
-
-  <div class="vig"></div>
-  <div class="dust"></div>
-
-  <!-- HUD -->
   <div class="hud">
-    <div class="top">
-      <div class="logo">N/I&nbsp;<b>ESCAPE</b></div>
-      <div class="topR">
-        <div class="panel timer"><small>O₂ REMAINING</small>04:38</div>
-        <button class="ebtn">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z"/></svg>
-          緊急会議
-        </button>
-      </div>
+    <div class="logo">N/I <b>ESCAPE</b></div>
+    <div class="pan timer"><small>O2 REMAINING</small><span id="clock">04:38</span></div>
+    <button class="eb" id="eb">⚠ 緊急会議</button>
+
+    <div class="pan tasks">
+      <h3 id="th">TASKS &nbsp; 2 / 5</h3>
+      <div class="bar"><i id="bar"></i></div>
+      <div class="t done"><span class="ck on">✓</span>電源を復旧する</div>
+      <div class="t done"><span class="ck on">✓</span>カードキーを発見</div>
+      <div class="t"><span class="ck"></span>配線を正しくつなぐ</div>
+      <div class="t"><span class="ck"></span>暗号コードを解読</div>
+      <div class="t"><span class="ck"></span>酸素ダクトを開放</div>
     </div>
 
-    <div class="panel tasks">
-      <h3><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7fe9d6" stroke-width="2.4" stroke-linecap="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>TASKS &nbsp; 2 / 5</h3>
-      <div class="bar"><i></i></div>
-      <div class="task done"><span class="ck on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M5 12l5 5L20 6"/></svg></span>電源を復旧する</div>
-      <div class="task done"><span class="ck on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round"><path d="M5 12l5 5L20 6"/></svg></span>カードキーを発見</div>
-      <div class="task"><span class="ck"></span>配線を正しくつなぐ</div>
-      <div class="task"><span class="ck"></span>暗号コードを解読</div>
-      <div class="task"><span class="ck"></span>酸素ダクトを開放</div>
-    </div>
-
-    <div class="panel map">
-      <svg viewBox="0 0 230 128">
-        <rect x="14" y="16" width="62" height="42" rx="6" fill="rgba(47,242,208,.08)" stroke="rgba(47,242,208,.45)"/>
-        <rect x="92" y="10" width="74" height="54" rx="6" fill="rgba(47,242,208,.16)" stroke="rgba(47,242,208,.7)"/>
-        <rect x="150" y="74" width="62" height="40" rx="6" fill="rgba(47,242,208,.08)" stroke="rgba(47,242,208,.45)"/>
-        <rect x="30" y="78" width="70" height="34" rx="6" fill="rgba(47,242,208,.08)" stroke="rgba(47,242,208,.45)"/>
-        <line x1="76" y1="37" x2="92" y2="37" stroke="rgba(126,200,255,.4)" stroke-width="3"/>
-        <line x1="129" y1="64" x2="129" y2="78" stroke="rgba(126,200,255,.4)" stroke-width="3"/>
-        <line x1="65" y1="58" x2="65" y2="78" stroke="rgba(126,200,255,.4)" stroke-width="3"/>
-        <circle cx="129" cy="37" r="6" fill="#2ff2d0"/>
-        <circle cx="181" cy="94" r="5" fill="#ff2e88"/>
-      </svg>
-    </div>
-
-    <div class="panel puz">
+    <div class="pan puz">
       <h4>SECURITY KEYPAD</h4>
-      <div class="read">7 3 _ _</div>
-      <div class="keys">
-        <div class="key">1</div><div class="key">2</div><div class="key hot">3</div>
-        <div class="key">4</div><div class="key">5</div><div class="key">6</div>
-        <div class="key hot">7</div><div class="key">8</div><div class="key">9</div>
-      </div>
+      <div class="read" id="read">_ _ _ _</div>
+      <div class="keys" id="keys"></div>
     </div>
 
-    <div class="panel prompt"><span class="kbd">E</span> 配線パネルを調べる</div>
+    <div class="pan prompt"><span class="kbd">← →</span> 歩く ／ キーパッドを押す</div>
   </div>
+  <div class="hint">これは試作画面です（矢印キーで歩けます／キーパッドを押せます）</div>
 </div>
+
+<script>
+(function(){
+  // ---- hero walk + idle bob ----
+  var hero=document.getElementById('hero'), sh=document.getElementById('hsh'), tag=document.getElementById('tag');
+  var x=50, face=1, t=0, moving=false, keys={};
+  addEventListener('keydown',e=>{var k=e.key;keys[k]=1;if(k.indexOf('Arrow')===0){e.preventDefault();}},{passive:false});
+  addEventListener('keyup',e=>keys[e.key]=0);
+  function frame(){
+    t+=1; var mv=0;
+    if(keys['ArrowLeft']||keys['a']) mv=-1;
+    if(keys['ArrowRight']||keys['d']) mv=1;
+    moving = mv!==0;
+    if(mv){ x=Math.max(16,Math.min(84,x+mv*0.55)); face=mv>0?1:-1; }
+    var bob = moving ? Math.abs(Math.sin(t*0.32))*10 : Math.sin(t*0.06)*3;        // 歩行ホップ / 待機の呼吸
+    var tilt = moving ? Math.sin(t*0.32)*3 : Math.sin(t*0.06)*1.2;
+    hero.style.left=x+'vw';
+    hero.style.transform='translateX(-50%) translateY(-'+bob+'px) rotate('+tilt+'deg) scaleX('+face+')';
+    sh.style.left=x+'vw';
+    sh.style.transform='translateX(-50%) scale('+(moving?0.92:1)+')';
+    tag.style.left=x+'vw'; tag.style.bottom='calc(13% + '+(hero.offsetHeight+6)+'px)';
+    requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+
+  // ---- O2 timer countdown ----
+  var sec=4*60+38, clock=document.getElementById('clock');
+  setInterval(function(){ if(sec>0)sec--; var m=Math.floor(sec/60), s=sec%60;
+    clock.textContent=m+':'+(s<10?'0':'')+s; }, 1000);
+
+  // ---- keypad puzzle (enter 7 3 9 1) ----
+  var code='', answer='7391', read=document.getElementById('read'), keysEl=document.getElementById('keys');
+  var th=document.getElementById('th'), bar=document.getElementById('bar');
+  for(var n=1;n<=9;n++){ (function(n){var d=document.createElement('div');d.className='key';d.textContent=n;
+    d.onclick=function(){ if(code.length>=4)return; code+=n; render();
+      if(code.length===4){ if(code===answer){ solved(); } else { setTimeout(function(){code='';render();},500); } } };
+    keysEl.appendChild(d); })(n); }
+  function render(){ var a=code.split(''); while(a.length<4)a.push('_'); read.textContent=a.join(' '); }
+  function solved(){ read.textContent='✔ UNLOCK'; read.style.color='#7dffb0';
+    [].forEach.call(keysEl.children,function(k){k.classList.add('ok');});
+    th.textContent='TASKS   3 / 5'; bar.style.width='60%';
+    document.querySelectorAll('.t')[3].classList.add('done');
+    document.querySelectorAll('.t')[3].querySelector('.ck').classList.add('on');
+    document.querySelectorAll('.t')[3].querySelector('.ck').textContent='✓'; }
+  render();
+
+  document.getElementById('eb').onclick=function(){ alert('緊急会議（本番では全員集合→議論→投票で追放）'); };
+})();
+</script>
