@@ -210,15 +210,17 @@
       if(dragV){var dx=dragV.cx-dragV.x,dy=dragV.cy-dragV.y,l=Math.hypot(dx,dy); if(l>8){mvx=dx/Math.max(l,60);mvz=dy/Math.max(l,60);}}
     }
     if(mvx)face=mvx>0?1:-1;
-    px=Math.max(8,Math.min(92,px+mvx*0.6));
     pd=Math.max(0,Math.min(1,pd+mvz*0.012));
+    var xMin=34+(8-34)*pd, xMax=66+(92-66)*pd;   // 壁のパース: 奥=狭い / 手前=広い（台形）
+    px=Math.max(xMin,Math.min(xMax,px+mvx*0.6));
     var moving=(mvx||mvz);
 
-    // doors at left/right edges
+    // 横の出口: 手前(通路が広がる所)で左右端に到達した時だけ隣室へ
     var canL=ri>0, canR=ri<ROOMS.length-1;
-    dl.classList.toggle('show', canL && px<18); dr.classList.toggle('show', canR && px>82);
-    if(!locked){ if(canR && px>=91 && mvx>0) gotoRoom(ri+1,false);
-                 else if(canL && px<=9 && mvx<0) gotoRoom(ri-1,true); }
+    var atR=px>=xMax-0.4 && xMax>=86, atL=px<=xMin+0.4 && xMin<=14;
+    dl.classList.toggle('show', canL && atL); dr.classList.toggle('show', canR && atR);
+    if(!locked){ if(canR && atR && mvx>0) gotoRoom(ri+1,false);
+                 else if(canL && atL && mvx<0) gotoRoom(ri-1,true); }
 
     // place hero with depth scale
     var sc=scFor(pd), wv=Wv(), hpx=BASEW*sc; // width in vw
