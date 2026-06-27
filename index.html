@@ -87,6 +87,19 @@
     font-size:16px;opacity:0;transition:opacity .3s;pointer-events:none;text-align:center}
   #toast.show{opacity:1}
   .hint{position:absolute;bottom:5px;left:0;right:0;text-align:center;font-size:11px;color:#7e93b8;z-index:11}
+  #okflash{position:absolute;inset:0;z-index:18;pointer-events:none;opacity:0;transition:opacity .2s;
+    background:radial-gradient(circle at 50% 55%,rgba(125,255,176,.5),transparent 60%)}
+  #meet{position:absolute;inset:0;z-index:35;display:none;align-items:center;justify-content:center;background:rgba(2,5,12,.72);backdrop-filter:blur(3px)}
+  .meetbox{width:min(92vw,560px);padding:22px;background:rgba(12,20,42,.95);border:1px solid rgba(255,90,126,.4);border-radius:18px;box-shadow:0 20px 60px rgba(0,0,0,.6);text-align:center}
+  .meetbox h3{font-size:20px;letter-spacing:.14em;color:#ff6a8e;margin-bottom:6px;font-weight:800}
+  .meetres{font-size:14px;color:#dbe6fb;min-height:22px;margin-bottom:14px}
+  .meetres b{color:#ff6a6a}
+  .meetgrid{display:flex;justify-content:center;gap:12px;flex-wrap:wrap}
+  .suscard{width:108px;cursor:pointer;background:rgba(20,32,60,.8);border:1px solid rgba(126,200,255,.25);border-radius:14px;padding:10px 6px;transition:.15s}
+  .suscard:hover{transform:translateY(-3px);border-color:#ff6a8e}
+  .suscard img{width:78px;height:104px;object-fit:contain;display:block;margin:0 auto}
+  .suscard span{display:block;font-size:13px;font-weight:700;color:#eaf2ff;margin-top:4px}
+  .meetx{margin-top:16px;display:inline-block;cursor:pointer;color:#9fb0d0;font-size:13px;border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:7px 18px}
   #start{position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
     background:radial-gradient(circle at 50% 35%,#142747,#070b18 70%);text-align:center;padding:24px}
   #start h1{font-size:46px;letter-spacing:.1em;color:#eaf2ff;text-shadow:0 3px 0 #19324a}
@@ -125,6 +138,15 @@
   <div class="hint">矢印キー / WASD で自由に移動（上下で奥行きも）・画面ドラッグでも移動</div>
 
   <div id="modal"><div class="card" id="card"></div><div class="x" id="mx">✕</div></div>
+  <div id="okflash"></div>
+  <div id="meet">
+    <div class="meetbox">
+      <h3>緊急会議</h3>
+      <div class="meetres" id="meetRes"></div>
+      <div class="meetgrid" id="meetGrid"></div>
+      <div class="meetx" id="meetX">閉じる</div>
+    </div>
+  </div>
   <div id="toast"></div>
   <div id="win"><h1>ESCAPE SUCCESS</h1><p>全部屋の謎を解いて脱出した！（※これは試作版です）</p><button onclick="location.reload()">もう一度</button></div>
   <div id="start">
@@ -163,9 +185,9 @@
     card.innerHTML=hintHTML+'<div class="read" id="rd"></div><div class="keys" id="ks"></div>';
     var code='',rd=card.querySelector('#rd'),ks=card.querySelector('#ks');
     function rr(){var a=code.split('');while(a.length<len)a.push('_');rd.textContent=a.join(' ');}
-    function add(n){ if(code.length>=len)return; code+=n; rr();
-      if(code.length===len){ if(code===answer){[].forEach.call(ks.querySelectorAll('.key'),function(k){k.classList.add('ok');});setTimeout(onSolve,350);}
-        else setTimeout(function(){code='';rr();},420); } }
+    function add(n){ if(code.length>=len)return; code+=n; SFX.click(); rr();
+      if(code.length===len){ if(code===answer){SFX.ok();[].forEach.call(ks.querySelectorAll('.key'),function(k){k.classList.add('ok');});setTimeout(onSolve,350);}
+        else {SFX.ng();setTimeout(function(){code='';rr();},420);} } }
     for(var n=1;n<=9;n++){(function(n){var d=document.createElement('div');d.className='key';d.textContent=n;d.onclick=function(){add(''+n);};ks.appendChild(d);})(n);}
     var z=document.createElement('div');z.className='key';z.textContent='0';z.style.gridColumn='2';z.onclick=function(){add('0');};ks.appendChild(z);
     rr();
@@ -242,16 +264,43 @@
         showOrd();
       }};
     }}
+    ,
+    switches:{theme:'メカ',make:function(tier,rng){
+      var n=tier===1?4:(tier===2?5:6),target=[];for(var i=0;i<n;i++)target.push(ri2(rng,2));
+      return {title:'スイッチを合わせる',render:function(card,done){
+        var state=target.map(function(){return ri2(rng,2);}); if(state.every(function(s,j){return s===target[j];}))state[0]^=1;
+        card.innerHTML='<h4>スイッチを目標に合わせる</h4><div style="font-size:11px;color:#9fb6d8;margin-bottom:5px">目標</div><div id="tg" style="display:flex;justify-content:center;gap:8px;margin-bottom:14px"></div><div id="sw" style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap"></div>';
+        var tg=card.querySelector('#tg'),sw=card.querySelector('#sw');
+        target.forEach(function(v){var d=document.createElement('div');d.style.cssText='width:30px;height:16px;border-radius:8px;background:'+(v?'#2ff2d0':'#33405e');tg.appendChild(d);});
+        state.forEach(function(v,i){var d=document.createElement('div');function paint(){d.style.cssText='width:48px;height:28px;border-radius:16px;cursor:pointer;transition:.15s;position:relative;background:'+(state[i]?'#2ff2d0':'#33405e');d.innerHTML='<span style="position:absolute;top:3px;'+(state[i]?'right:3px':'left:3px')+';width:22px;height:22px;border-radius:50%;background:#fff;transition:.15s"></span>';}
+          paint();d.onclick=function(){state[i]^=1;paint();SFX.click();if(state.every(function(s,j){return s===target[j];})){SFX.ok();setTimeout(done,300);}};sw.appendChild(d);});
+      }};
+    }},
+    uv:{theme:'観察',make:function(tier,rng){
+      var len=tier===1?3:4,ans='';for(var i=0;i<len;i++)ans+=(1+ri2(rng,9)); var dur=tier===3?500:900;
+      return {title:'隠し数字を読む',render:function(card,done){
+        var hint='<h4>UVライトで隠し数字を読む</h4><div style="font-size:11px;color:#9fb6d8;margin-bottom:6px">「ライト」を押すと一瞬だけ見える</div>'
+          +'<div id="uvp" style="height:50px;display:flex;align-items:center;justify-content:center;font-family:ui-monospace,monospace;font-size:30px;letter-spacing:.3em;color:transparent;background:#0a0f1c;border:1px solid rgba(126,200,255,.2);border-radius:10px;margin-bottom:10px;transition:color .12s">'+ans+'</div>'
+          +'<button class="act" id="lt" style="margin-bottom:12px">🔦 ライト</button>';
+        pad(card,len,ans,hint,done);
+        var p=card.querySelector('#uvp'),lt=card.querySelector('#lt');
+        lt.onclick=function(){SFX.click();p.style.color='#7dffb0';setTimeout(function(){p.style.color='transparent';},dur);};
+      }};
+    }}
   };
   var ALLIDS=Object.keys(PUZZLES);
   var DIFFS={easy:{label:'やさしい',curve:[1,1,2,2]},normal:{label:'ふつう',curve:[1,2,2,3]},hard:{label:'むずい',curve:[2,2,3,3]},expert:{label:'エキスパート',curve:[2,3,3,3]}};
-  var MODES={any:{label:'おまかせ',ids:null},cipher:{label:'暗号系',ids:['keypad','number']},mech:{label:'メカ系',ids:['wiring','sequence']},obs:{label:'観察系',ids:['observe','sequence']}};
+  var MODES={any:{label:'おまかせ',ids:null},cipher:{label:'暗号系',ids:['keypad','number']},mech:{label:'メカ系',ids:['wiring','sequence','switches']},obs:{label:'観察系',ids:['observe','uv','sequence']}};
   var curDiff='normal',curMode='any',curSeed='';
+  // ---- 人狼: 容疑者(N/Iメンバー)とインポスター ----
+  var SUSPECTS=[{name:'トラすけ',img:'sus_torasuke.png'},{name:'トラべえ',img:'sus_torabee.png'},{name:'ミツネ',img:'sus_mitsune.png'},{name:'アヤメ',img:'sus_ayame.png'}];
+  var impostor=null, ejected=[], caught=false;
   function makeRun(){
     var seed=curSeed||(''+Date.now()+Math.floor(Math.random()*1e6)); var rng=makeRng(seed);
     var ids=MODES[curMode].ids||ALLIDS, curve=DIFFS[curDiff].curve, prev='';
     for(var i=0;i<ROOMDEF.length;i++){ var cand=ids.filter(function(x){return x!==prev;}); if(!cand.length)cand=ids;
       var id=pickR(rng,cand); prev=id; roomState[i].done=false; roomState[i].puz=PUZZLES[id].make(curve[i],rng); }
+    impostor=pickR(rng,SUSPECTS); ejected=[]; caught=false;
     doneCount=0; objn.textContent='0 / '+TOTAL+' 完了';
   }
   var ri=0, px=50, pd=.5, face=1, t=0, locked=false;
@@ -280,7 +329,7 @@
     drawMap();
   }
   function gotoRoom(n){
-    if(n<0||n>=ROOMDEF.length)return; locked=true; bg.classList.remove('on'); doorp.classList.remove('show');
+    if(n<0||n>=ROOMDEF.length)return; locked=true; SFX.door(); bg.classList.remove('on'); doorp.classList.remove('show');
     setTimeout(function(){ ri=n; px=50; pd=.85; loadRoom(); bg.classList.add('on'); locked=false; },330); // 扉から入室→手前中央に登場
   }
   function win(){ locked=true; document.getElementById('win').style.display='flex'; }
@@ -298,15 +347,42 @@
 
   function toast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(function(){el.classList.remove('show');},1600);}
 
+  // ---- 効果音(WebAudio・ファイル不要) ----
+  var AC; function ac(){ if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}} return AC; }
+  function beep(f,dur,type,vol){ var c=ac(); if(!c)return; try{var o=c.createOscillator(),g=c.createGain();o.type=type||'square';o.frequency.value=f;g.gain.value=vol||0.05;o.connect(g);g.connect(c.destination);o.start();g.gain.exponentialRampToValueAtTime(0.0001,c.currentTime+(dur||0.12));o.stop(c.currentTime+(dur||0.12));}catch(e){} }
+  var SFX={ click:function(){beep(440,0.05,'square',0.04);},
+    ok:function(){beep(660,0.09,'sine',0.07);setTimeout(function(){beep(990,0.13,'sine',0.07);},90);},
+    ng:function(){beep(150,0.2,'sawtooth',0.06);},
+    door:function(){beep(280,0.32,'sine',0.06);setTimeout(function(){beep(520,0.3,'sine',0.05);},120);},
+    eject:function(){beep(200,0.45,'sawtooth',0.07);setTimeout(function(){beep(120,0.5,'sawtooth',0.06);},150);} };
+  function flashOk(){var f=document.getElementById('okflash');if(!f)return;f.style.opacity='.55';setTimeout(function(){f.style.opacity='0';},200);}
+
   // ---- task modal: ランで割り当てたパズルを描画 ----
   function openTask(){
     var rs=roomState[ri]; if(!rs.puz||rs.done)return; modal.style.display='flex';
     rs.puz.render(card, finish);
     function finish(){ rs.done=true; doneCount++; objn.textContent=doneCount+' / '+TOTAL+' 完了';
-      modal.style.display='none'; loadRoom(); toast('クリア！  '+doneCount+' / '+TOTAL); }
+      modal.style.display='none'; flashOk(); SFX.ok(); loadRoom(); toast('クリア！  '+doneCount+' / '+TOTAL); }
   }
   document.getElementById('mx').onclick=function(){modal.style.display='none';};
-  document.getElementById('eb').onclick=function(){alert('緊急会議：本番では全員集合→議論→投票で1人を追放します');};
+
+  // ---- 人狼: 緊急会議 → 投票 → 追放 ----
+  function openMeet(){
+    var meet=document.getElementById('meet'),grid=document.getElementById('meetGrid'),res=document.getElementById('meetRes');
+    meet.style.display='flex'; res.innerHTML='誰が裏切り者だ？ 1人を選んで投票'; grid.innerHTML='';
+    var remain=SUSPECTS.filter(function(s){return ejected.indexOf(s.name)<0;});
+    if(caught||!remain.length){ res.innerHTML='裏切り者はもういない。'; }
+    remain.forEach(function(s){ var c=document.createElement('div'); c.className='suscard';
+      c.innerHTML='<img src="'+s.img+'"><span>'+s.name+'</span>';
+      c.onclick=function(){ [].forEach.call(grid.children,function(x){x.style.pointerEvents='none';}); SFX.click(); ejected.push(s.name);
+        if(s.name===impostor.name){ caught=true; SFX.eject(); c.style.boxShadow='0 0 24px #ff5a5a'; res.innerHTML='⚠ <b>'+s.name+'</b> は裏切り者だった！ 追放成功 🎉';
+          setTimeout(function(){meet.style.display='none';toast('裏切り者を追放した！');},2300); }
+        else { SFX.ng(); c.style.opacity='.4'; sec=Math.max(0,sec-20); res.innerHTML=s.name+' は無実だった…（O2 −20秒）';
+          setTimeout(function(){meet.style.display='none';},2000); } };
+      grid.appendChild(c); });
+  }
+  document.getElementById('eb').onclick=openMeet;
+  document.getElementById('meetX').onclick=function(){document.getElementById('meet').style.display='none';};
 
   // ---- input ----
   var keys={},dragV=null;
