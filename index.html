@@ -118,7 +118,7 @@
   var TOTAL=ROOMS.filter(function(r){return r.task;}).length;
   var doneCount=0;
   var ri=0, px=50, pd=.5, face=1, t=0, locked=false;
-  var BACKY=64, FRONTY=90, SB=.58, SF=1.06, BASEW=13.5; // perspective floor mapping
+  var BACKY=70, FRONTY=94, SB=.64, SF=1.16, BASEW=13.5; // perspective floor mapping（奥=床の終わり / 手前=さらに前へ）
 
   var bg=document.getElementById('bg'), hero=document.getElementById('hero'), hsh=document.getElementById('hsh'),
       tag=document.getElementById('tag'), spot=document.getElementById('spot'), dl=document.getElementById('dl'),
