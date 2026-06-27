@@ -29,11 +29,17 @@
   @keyframes bobp{50%{transform:translateX(-50%) translateY(-5px)}}
 
   /* doors */
-  .darrow{position:absolute;top:48%;z-index:6;font-size:30px;color:#7fe9d6;opacity:.0;transition:opacity .25s;
-    text-shadow:0 0 14px rgba(47,242,208,.7);animation:bobx 1.2s infinite}
-  .darrow.show{opacity:.95}
-  .darrow.l{left:1.5vw} .darrow.r{right:1.5vw}
-  @keyframes bobx{50%{transform:translateX(6px)}}
+  .doorp{position:absolute;top:40%;left:50%;transform:translateX(-50%);z-index:8;white-space:nowrap;
+    background:rgba(8,30,24,.7);border:1px solid rgba(125,255,176,.6);color:#bfffd9;font-weight:800;font-size:14px;
+    padding:8px 16px;border-radius:22px;box-shadow:0 0 22px rgba(47,242,208,.5);opacity:0;transition:opacity .3s}
+  .doorp.show{opacity:1;animation:bobup 1.3s infinite}
+  @keyframes bobup{50%{transform:translateX(-50%) translateY(-5px)}}
+  #win{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 40%,#103b34,#04060e);text-align:center;gap:8px;padding:20px}
+  #win h1{font-size:44px;color:#7dffb0;text-shadow:0 0 26px rgba(125,255,176,.55);letter-spacing:.06em}
+  #win p{color:#bcd}
+  #win button{margin-top:14px;cursor:pointer;background:linear-gradient(180deg,#2ff2d0,#159e85);border:none;border-radius:30px;
+    padding:13px 34px;color:#04241d;font-weight:800;font-size:16px}
 
   .pan{position:absolute;background:rgba(10,17,36,.62);backdrop-filter:blur(13px);-webkit-backdrop-filter:blur(13px);
     border:1px solid rgba(126,200,255,.2);border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,.5);z-index:10}
@@ -90,13 +96,12 @@
   <div id="hsh"></div>
   <div id="hero"><canvas id="hcv" style="width:100%;aspect-ratio:240/324;display:none"></canvas><img id="himg" src="hero.png" alt="Torahachi" style="width:100%;display:block"></div>
   <div id="tag">トラはち</div>
-  <div class="darrow l" id="dl">◀</div>
-  <div class="darrow r" id="dr">▶</div>
+  <div class="doorp" id="doorp">▲ 扉が開いた — 中央の扉へ進む</div>
 
   <div class="logo">N/I <b>ESCAPE</b></div>
   <div class="pan timer"><small>O2 REMAINING</small><span id="clock">05:00</span></div>
   <button class="pan eb" id="eb">⚠ 緊急会議</button>
-  <div class="pan obj"><b>TASKS</b><span id="objn">0 / 3 完了</span></div>
+  <div class="pan obj"><b>TASKS</b><span id="objn">0 / 4 完了</span></div>
   <div class="pan here" id="here">機関室</div>
   <div class="pan map"><svg id="mapsvg" viewBox="0 0 208 74"></svg></div>
 
@@ -105,16 +110,17 @@
 
   <div id="modal"><div class="card" id="card"></div><div class="x" id="mx">✕</div></div>
   <div id="toast"></div>
+  <div id="win"><h1>ESCAPE SUCCESS</h1><p>全部屋の謎を解いて脱出した！（※これは試作版です）</p><button onclick="location.reload()">もう一度</button></div>
 </div>
 
 <script>
 (function(){
   // rooms: bg + name + optional task {x,d,type,...}
   var ROOMS=[
-    {bg:'bg1.jpg',name:'機関室',     task:{x:72,d:.32,type:'keypad',code:'7391',title:'暗号コードを解読'}},
-    {bg:'bg2.jpg',name:'制御室',     task:{x:30,d:.5, type:'work',  label:'配線をつなぐ',title:'配線を修復'}},
-    {bg:'bg3.jpg',name:'医務室',     task:null},
-    {bg:'bg4.jpg',name:'コア室',     task:{x:50,d:.42,type:'work',  label:'コアを起動',  title:'脱出コア起動'}}
+    {bg:'bg1.jpg',name:'機関室',     task:{x:72,d:.36,type:'keypad',code:'7391',title:'暗号コードを解読'}},
+    {bg:'bg2.jpg',name:'制御室',     task:{x:28,d:.5, type:'work',  label:'配線をつなぐ',title:'配線を修復'}},
+    {bg:'bg3.jpg',name:'医務室',     task:{x:70,d:.45,type:'work',  label:'救護ログを照合',title:'救護データ照合'}},
+    {bg:'bg4.jpg',name:'コア室',     task:{x:50,d:.5, type:'work',  label:'コアを起動',  title:'脱出コア起動',last:true}}
   ];
   var TOTAL=ROOMS.filter(function(r){return r.task;}).length;
   var doneCount=0;
@@ -122,8 +128,8 @@
   var BACKY=70, FRONTY=94, SB=.64, SF=1.16, BASEW=13.5; // perspective floor mapping（奥=床の終わり / 手前=さらに前へ）
 
   var bg=document.getElementById('bg'), hero=document.getElementById('hero'), hsh=document.getElementById('hsh'),
-      tag=document.getElementById('tag'), spot=document.getElementById('spot'), dl=document.getElementById('dl'),
-      dr=document.getElementById('dr'), ipr=document.getElementById('ipr'), here=document.getElementById('here'),
+      tag=document.getElementById('tag'), spot=document.getElementById('spot'), doorp=document.getElementById('doorp'),
+      ipr=document.getElementById('ipr'), here=document.getElementById('here'),
       objn=document.getElementById('objn'), modal=document.getElementById('modal'), card=document.getElementById('card'),
       H=()=>document.getElementById('stage').clientHeight, Wv=()=>document.getElementById('stage').clientWidth;
 
@@ -146,10 +152,11 @@
     } else { spot.style.display='none'; }
     drawMap();
   }
-  function gotoRoom(n,fromRight){
-    if(n<0||n>=ROOMS.length)return; locked=true; bg.classList.remove('on');
-    setTimeout(function(){ ri=n; px=fromRight?84:16; pd=.5; loadRoom(); bg.classList.add('on'); locked=false; },330);
+  function gotoRoom(n){
+    if(n<0||n>=ROOMS.length)return; locked=true; bg.classList.remove('on'); doorp.classList.remove('show');
+    setTimeout(function(){ ri=n; px=50; pd=.85; loadRoom(); bg.classList.add('on'); locked=false; },330); // 扉から入室→手前中央に登場
   }
+  function win(){ locked=true; document.getElementById('win').style.display='flex'; }
 
   function drawMap(){
     var s=document.getElementById('mapsvg'),W=208,n=ROOMS.length,gap=W/n,r=12,y=30,h='';
@@ -216,12 +223,12 @@
     px=Math.max(xMin,Math.min(xMax,px+mvx*0.6));
     var moving=(mvx||mvz);
 
-    // 横の出口: 手前(通路が広がる所)で左右端に到達した時だけ隣室へ
-    var canL=ri>0, canR=ri<ROOMS.length-1;
-    var atR=px>=xMax-0.4 && xMax>=86, atL=px<=xMin+0.4 && xMin<=14;
-    dl.classList.toggle('show', canL && atL); dr.classList.toggle('show', canR && atR);
-    if(!locked){ if(canR && atR && mvx>0) gotoRoom(ri+1,false);
-                 else if(canL && atL && mvx<0) gotoRoom(ri-1,true); }
+    // 中央の鍵付き扉: その部屋の謎を解くと開く → 奥中央の扉へ歩いて次の部屋へ
+    var solved = ROOMS[ri].task ? ROOMS[ri].task.done : true;
+    doorp.classList.toggle('show', solved && !locked);
+    if(!locked && solved && Math.abs(px-50)<9 && pd<0.13){
+      if(ri<ROOMS.length-1) gotoRoom(ri+1); else win();
+    }
 
     // place hero with depth scale
     var sc=scFor(pd), wv=Wv(), hpx=BASEW*sc; // width in vw
