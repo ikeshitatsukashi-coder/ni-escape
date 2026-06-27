@@ -87,6 +87,22 @@
     font-size:16px;opacity:0;transition:opacity .3s;pointer-events:none;text-align:center}
   #toast.show{opacity:1}
   .hint{position:absolute;bottom:5px;left:0;right:0;text-align:center;font-size:11px;color:#7e93b8;z-index:11}
+  #start{position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
+    background:radial-gradient(circle at 50% 35%,#142747,#070b18 70%);text-align:center;padding:24px}
+  #start h1{font-size:46px;letter-spacing:.1em;color:#eaf2ff;text-shadow:0 3px 0 #19324a}
+  #start h1 b{color:#2ff2d0}
+  #start>p{color:#9fb6d8;font-size:14px;margin-top:-6px}
+  .sgrp{display:flex;align-items:center;gap:12px;flex-wrap:wrap;justify-content:center}
+  .slbl{font-size:11px;letter-spacing:.22em;color:#7fe9d6;font-weight:800;width:70px;text-align:right}
+  .sopts{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+  .sopt{cursor:pointer;background:rgba(12,20,42,.7);border:1px solid rgba(126,200,255,.25);color:#cfe0ff;border-radius:11px;
+    padding:9px 15px;font-size:14px;font-weight:700}
+  .sopt.on{background:linear-gradient(180deg,#2ff2d0,#159e85);color:#04241d;border-color:transparent}
+  #seedIn{margin-top:6px;width:min(80vw,300px);padding:10px 14px;border-radius:11px;border:1px solid rgba(126,200,255,.25);
+    background:rgba(8,14,30,.7);color:#eaf2ff;font-size:14px;text-align:center}
+  .playbtn{margin-top:8px;cursor:pointer;background:linear-gradient(180deg,#ff7a3d,#e0561d);border:none;border-radius:30px;
+    padding:15px 50px;color:#fff;font-weight:900;font-size:20px;box-shadow:0 6px 0 #b8420f}
+  .playbtn:active{transform:translateY(3px);box-shadow:0 3px 0 #b8420f}
 </style>
 
 <div id="stage">
@@ -111,19 +127,133 @@
   <div id="modal"><div class="card" id="card"></div><div class="x" id="mx">✕</div></div>
   <div id="toast"></div>
   <div id="win"><h1>ESCAPE SUCCESS</h1><p>全部屋の謎を解いて脱出した！（※これは試作版です）</p><button onclick="location.reload()">もう一度</button></div>
+  <div id="start">
+    <h1>N/I <b>ESCAPE</b></h1>
+    <p>難易度とモードを選んで脱出せよ</p>
+    <div class="sgrp"><span class="slbl">難易度</span><div class="sopts" id="diffOpts"></div></div>
+    <div class="sgrp"><span class="slbl">モード</span><div class="sopts" id="modeOpts"></div></div>
+    <input id="seedIn" placeholder="シード（任意・同じ合言葉で同じ問題）">
+    <button class="playbtn" id="playBtn">▶ あそぶ</button>
+  </div>
 </div>
 
 <script>
 (function(){
-  // rooms: bg + name + optional task {x,d,type,...}
-  var ROOMS=[
-    {bg:'bg1.jpg',name:'機関室',     task:{x:72,d:.36,type:'keypad',code:'7391',title:'暗号コードを解読'}},
-    {bg:'bg2.jpg',name:'制御室',     task:{x:28,d:.5, type:'work',  label:'配線をつなぐ',title:'配線を修復'}},
-    {bg:'bg3.jpg',name:'医務室',     task:{x:70,d:.45,type:'work',  label:'救護ログを照合',title:'救護データ照合'}},
-    {bg:'bg4.jpg',name:'コア室',     task:{x:50,d:.5, type:'work',  label:'コアを起動',  title:'脱出コア起動',last:true}}
+  // 部屋(背景/名前/謎スポット位置)は固定、謎の中身はランで抽選
+  var ROOMDEF=[
+    {bg:'bg1.jpg',name:'機関室',spot:{x:72,d:.36}},
+    {bg:'bg2.jpg',name:'制御室',spot:{x:28,d:.5}},
+    {bg:'bg3.jpg',name:'医務室',spot:{x:70,d:.45}},
+    {bg:'bg4.jpg',name:'コア室',spot:{x:50,d:.5}}
   ];
-  var TOTAL=ROOMS.filter(function(r){return r.task;}).length;
-  var doneCount=0;
+  var TOTAL=ROOMDEF.length, doneCount=0;
+  var roomState=ROOMDEF.map(function(){return {done:false,puz:null};});
+
+  // ---------- RNG(シード対応) ----------
+  function makeRng(seed){ var h=1779033703^seed.length; for(var i=0;i<seed.length;i++){h=Math.imul(h^seed.charCodeAt(i),3432918353);h=h<<13|h>>>19;}
+    var a=h>>>0; return function(){ a=a+0x6D2B79F5|0; var t=Math.imul(a^a>>>15,1|a); t=t+Math.imul(t^t>>>7,61|t)^t; return ((t^t>>>14)>>>0)/4294967296; }; }
+  function ri2(rng,n){return Math.floor(rng()*n);}
+  function pickR(rng,a){return a[ri2(rng,a.length)];}
+  function shuf(rng,a){a=a.slice();for(var i=a.length-1;i>0;i--){var j=ri2(rng,i+1),x=a[i];a[i]=a[j];a[j]=x;}return a;}
+  var COLORS=[{n:'青',c:'#3aa0ff'},{n:'桃',c:'#ff5fa2'},{n:'緑',c:'#39e0a0'},{n:'黄',c:'#ffcc3a'},{n:'紫',c:'#9a7bff'},{n:'橙',c:'#ff8a3a'}];
+  function chip(color,label){return '<span style="display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:8px;background:'+color+';color:#06121a;font-weight:800;margin:3px;font-size:15px">'+label+'</span>';}
+
+  // 数字キーパッド(0-9)ヘルパー
+  function pad(card,len,answer,hintHTML,onSolve){
+    card.innerHTML=hintHTML+'<div class="read" id="rd"></div><div class="keys" id="ks"></div>';
+    var code='',rd=card.querySelector('#rd'),ks=card.querySelector('#ks');
+    function rr(){var a=code.split('');while(a.length<len)a.push('_');rd.textContent=a.join(' ');}
+    function add(n){ if(code.length>=len)return; code+=n; rr();
+      if(code.length===len){ if(code===answer){[].forEach.call(ks.querySelectorAll('.key'),function(k){k.classList.add('ok');});setTimeout(onSolve,350);}
+        else setTimeout(function(){code='';rr();},420); } }
+    for(var n=1;n<=9;n++){(function(n){var d=document.createElement('div');d.className='key';d.textContent=n;d.onclick=function(){add(''+n);};ks.appendChild(d);})(n);}
+    var z=document.createElement('div');z.className='key';z.textContent='0';z.style.gridColumn='2';z.onclick=function(){add('0');};ks.appendChild(z);
+    rr();
+  }
+
+  // ---------- パズルバンク(各 make(tier,rng)->{title,render(card,done)}) tier:1易/2普/3難 ----------
+  var PUZZLES={
+    keypad:{theme:'暗号',make:function(tier,rng){
+      var len=tier===1?3:4, leg=shuf(rng,COLORS).slice(0,5).map(function(c){return {c:c.c,d:1+ri2(rng,9)};});
+      var tgt=[];for(var i=0;i<len;i++)tgt.push(pickR(rng,leg));
+      var base=tgt.map(function(t){return t.d;}).join(''), rule='', ans=base;
+      if(tier===3){rule=' ルール:各+1';ans=base.split('').map(function(x){return (+x)%9+1;}).join('');}
+      return {title:'暗号コードを解読',render:function(card,done){
+        var hint='<h4>暗号コードを解読'+rule+'</h4><div style="font-size:11px;color:#9fb6d8;margin-bottom:4px">色＝数字</div>'
+          +leg.map(function(l){return chip(l.c,l.d);}).join('')
+          +'<div style="font-size:11px;color:#9fb6d8;margin:10px 0 4px">この順に読む</div>'+tgt.map(function(t){return chip(t.c,'');}).join('');
+        pad(card,len,ans,hint,done);
+      }};
+    }},
+    number:{theme:'暗号',make:function(tier,rng){
+      var seq,ans,a;
+      if(tier===1){a=2+ri2(rng,4);var k=2+ri2(rng,3);seq=[a,a+k,a+2*k,a+3*k];ans=a+4*k;}
+      else if(tier===2){a=3+ri2(rng,5);var k2=4+ri2(rng,4);seq=[a,a+k2,a+2*k2,a+3*k2];ans=a+4*k2;}
+      else {var x=1+ri2(rng,3),y=2+ri2(rng,3);seq=[x,y,x+y,x+2*y];ans=2*x+3*y;}
+      return {title:'数列を解読',render:function(card,done){
+        var hint='<h4>数列を解読</h4><div style="font-size:11px;color:#9fb6d8;margin-bottom:8px">次に来る数字は？</div>'
+          +'<div style="font-size:24px;letter-spacing:.12em;color:#bdfff4;margin-bottom:6px">'+seq.join(' , ')+' , ?</div>';
+        pad(card,String(ans).length,String(ans),hint,done);
+      }};
+    }},
+    observe:{theme:'観察',make:function(tier,rng){
+      var pal=shuf(rng,COLORS),tgt=pal[0],dis=pal.slice(1,tier===1?2:(tier===2?3:4));
+      var total=tier===1?(6+ri2(rng,4)):(tier===2?(12+ri2(rng,5)):(16+ri2(rng,6)));
+      var cnt=2+ri2(rng,tier===1?4:(tier===2?5:6)); if(cnt>=total)cnt=total-1;
+      var dots=[];for(var i=0;i<cnt;i++)dots.push(tgt.c);for(var j=0;j<total-cnt;j++)dots.push(pickR(rng,dis).c);dots=shuf(rng,dots);
+      var sz=tier===3?16:20;
+      return {title:'数を数える',render:function(card,done){
+        var grid=dots.map(function(c){return '<span style="width:'+sz+'px;height:'+sz+'px;border-radius:50%;background:'+c+';display:inline-block;margin:3px"></span>';}).join('');
+        var hint='<h4>観察：数を数える</h4><div style="display:flex;flex-wrap:wrap;justify-content:center;max-width:300px;margin:0 auto 10px;padding:8px;background:rgba(0,0,0,.25);border-radius:10px">'+grid+'</div>'
+          +'<div style="font-size:13px;color:#bdfff4;margin-bottom:6px">'+chip(tgt.c,'')+' は何個？</div>';
+        pad(card,String(cnt).length,String(cnt),hint,done);
+      }};
+    }},
+    wiring:{theme:'メカ',make:function(tier,rng){
+      var n=tier===1?3:(tier===2?4:5),cols=shuf(rng,COLORS).slice(0,n).map(function(o){return o.c;}),left=shuf(rng,cols),right=shuf(rng,cols);
+      return {title:'配線をつなぐ',render:function(card,done){
+        card.innerHTML='<h4>配線：同じ色を結べ</h4><div id="wrap" style="display:flex;justify-content:center;gap:46px;padding:6px 10px"></div>';
+        var wrap=card.querySelector('#wrap'),L=document.createElement('div'),R=document.createElement('div');
+        L.style.cssText=R.style.cssText='display:flex;flex-direction:column;gap:11px';var sel=null,dc=0;
+        function node(color,side){var d=document.createElement('div');d.style.cssText='width:40px;height:40px;border-radius:10px;background:'+color+';cursor:pointer;border:3px solid transparent;transition:.15s';
+          d.onclick=function(){ if(d.dataset.done)return;
+            if(side==='L'){ if(sel)sel.style.borderColor='transparent'; sel=d; d.style.borderColor='#fff'; }
+            else if(sel){ if(sel.style.background===d.style.background){ sel.dataset.done=d.dataset.done='1'; sel.style.borderColor=d.style.borderColor='#7dffb0'; sel.style.opacity=d.style.opacity='.5'; sel=null; if(++dc===n)setTimeout(done,300); }
+              else { var s=sel;d.style.borderColor='#ff5a5a';setTimeout(function(){d.style.borderColor='transparent';s.style.borderColor='transparent';},300);sel=null; } } };
+          return d;}
+        left.forEach(function(c){L.appendChild(node(c,'L'));});right.forEach(function(c){R.appendChild(node(c,'R'));});
+        wrap.appendChild(L);wrap.appendChild(R);
+      }};
+    }},
+    sequence:{theme:'メカ',make:function(tier,rng){
+      var nb=tier===3?6:4,len=tier===1?3:(tier===2?4:5),memory=tier===3,pal=shuf(rng,COLORS).slice(0,nb).map(function(o){return o.c;});
+      var seq=[];for(var i=0;i<len;i++)seq.push(ri2(rng,nb));
+      return {title:'順番に押す',render:function(card,done){
+        card.innerHTML='<h4>順番に押す'+(memory?'（記憶）':'')+'</h4><div id="ord" style="min-height:20px;margin-bottom:8px;font-size:12px;color:#9fb6d8"></div>'
+          +'<div id="btns" style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap"></div><button class="act" id="pl" style="margin-top:12px">▶ 再生</button>';
+        var btns=card.querySelector('#btns'),ord=card.querySelector('#ord'),pl=card.querySelector('#pl'),playing=false,input=[];
+        var els=pal.map(function(c,i){var d=document.createElement('div');d.textContent=i+1;d.style.cssText='width:44px;height:44px;border-radius:12px;background:'+c+';opacity:.5;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;color:#06121a;transition:.1s';btns.appendChild(d);return d;});
+        function showOrd(){ ord.textContent= memory?'▶再生を見て覚える':('順番: '+seq.map(function(i){return i+1;}).join(' → ')); }
+        function flash(i){els[i].style.opacity='1';els[i].style.transform='scale(1.12)';setTimeout(function(){els[i].style.opacity='.5';els[i].style.transform='none';},320);}
+        pl.onclick=function(){if(playing)return;playing=true;input=[];var k=0;var iv=setInterval(function(){flash(seq[k]);k++;if(k>=seq.length){clearInterval(iv);playing=false;}},470);};
+        els.forEach(function(d,i){d.onclick=function(){if(playing)return;flash(i);input.push(i);
+          if(!input.every(function(v,j){return v===seq[j];})){input=[];ord.textContent='✗ もう一度';setTimeout(showOrd,700);return;}
+          if(input.length===seq.length)setTimeout(done,250);};});
+        showOrd();
+      }};
+    }}
+  };
+  var ALLIDS=Object.keys(PUZZLES);
+  var DIFFS={easy:{label:'やさしい',curve:[1,1,2,2]},normal:{label:'ふつう',curve:[1,2,2,3]},hard:{label:'むずい',curve:[2,2,3,3]},expert:{label:'エキスパート',curve:[2,3,3,3]}};
+  var MODES={any:{label:'おまかせ',ids:null},cipher:{label:'暗号系',ids:['keypad','number']},mech:{label:'メカ系',ids:['wiring','sequence']},obs:{label:'観察系',ids:['observe','sequence']}};
+  var curDiff='normal',curMode='any',curSeed='';
+  function makeRun(){
+    var seed=curSeed||(''+Date.now()+Math.floor(Math.random()*1e6)); var rng=makeRng(seed);
+    var ids=MODES[curMode].ids||ALLIDS, curve=DIFFS[curDiff].curve, prev='';
+    for(var i=0;i<ROOMDEF.length;i++){ var cand=ids.filter(function(x){return x!==prev;}); if(!cand.length)cand=ids;
+      var id=pickR(rng,cand); prev=id; roomState[i].done=false; roomState[i].puz=PUZZLES[id].make(curve[i],rng); }
+    doneCount=0; objn.textContent='0 / '+TOTAL+' 完了';
+  }
   var ri=0, px=50, pd=.5, face=1, t=0, locked=false;
   var BACKY=70, FRONTY=94, SB=.64, SF=1.16, BASEW=13.5; // perspective floor mapping（奥=床の終わり / 手前=さらに前へ）
 
@@ -140,57 +270,40 @@
   }
 
   function loadRoom(){
-    var r=ROOMS[ri];
+    var r=ROOMDEF[ri], sp=r.spot, dn=roomState[ri].done;
     bg.style.backgroundImage='url("'+r.bg+'")';
     here.textContent=r.name;
-    if(r.task && !r.task.done){ spot.style.display='block'; spot.classList.remove('done');
-      var sc=scFor(r.task.d); spot.style.left=r.task.x+'%'; spot.style.top=yFor(r.task.d)+'%';
-      spot.style.width=(74*sc)+'px'; spot.style.transform='translate(-50%,-50%)';
-    } else if(r.task && r.task.done){ spot.style.display='block'; spot.classList.add('done');
-      spot.querySelector('.pin').textContent='✓'; spot.style.left=r.task.x+'%'; spot.style.top=yFor(r.task.d)+'%';
-      spot.style.width=(74*scFor(r.task.d))+'px'; spot.style.transform='translate(-50%,-50%)';
-    } else { spot.style.display='none'; }
+    spot.style.display='block'; spot.classList.toggle('done',dn);
+    spot.querySelector('.pin').textContent=dn?'✓':'!';
+    spot.style.left=sp.x+'%'; spot.style.top=yFor(sp.d)+'%';
+    spot.style.width=(74*scFor(sp.d))+'px'; spot.style.transform='translate(-50%,-50%)';
     drawMap();
   }
   function gotoRoom(n){
-    if(n<0||n>=ROOMS.length)return; locked=true; bg.classList.remove('on'); doorp.classList.remove('show');
+    if(n<0||n>=ROOMDEF.length)return; locked=true; bg.classList.remove('on'); doorp.classList.remove('show');
     setTimeout(function(){ ri=n; px=50; pd=.85; loadRoom(); bg.classList.add('on'); locked=false; },330); // 扉から入室→手前中央に登場
   }
   function win(){ locked=true; document.getElementById('win').style.display='flex'; }
 
   function drawMap(){
-    var s=document.getElementById('mapsvg'),W=208,n=ROOMS.length,gap=W/n,r=12,y=30,h='';
+    var s=document.getElementById('mapsvg'),W=208,n=ROOMDEF.length,gap=W/n,r=12,y=30,h='';
     for(var i=0;i<n-1;i++){h+='<line x1="'+(gap*(i+0.5))+'" y1="'+y+'" x2="'+(gap*(i+1.5))+'" y2="'+y+'" stroke="rgba(126,200,255,.4)" stroke-width="3"/>';}
-    for(var i=0;i<n;i++){var cx=gap*(i+0.5);var cur=i===ri;var task=ROOMS[i].task;
-      var col=cur?'#2ff2d0':(task&&!task.done?'rgba(255,216,106,.9)':'rgba(126,200,255,.5)');
+    for(var i=0;i<n;i++){var cx=gap*(i+0.5);var cur=i===ri;var dn=roomState[i].done;
+      var col=cur?'#2ff2d0':(!dn?'rgba(255,216,106,.9)':'rgba(126,200,255,.5)');
       h+='<circle cx="'+cx+'" cy="'+y+'" r="'+r+'" fill="'+(cur?'rgba(47,242,208,.25)':'rgba(20,34,64,.8)')+'" stroke="'+col+'" stroke-width="'+(cur?3:2)+'"/>';
       h+='<text x="'+cx+'" y="'+(y+4)+'" text-anchor="middle" font-size="11" fill="'+col+'" font-family="sans-serif">'+(i+1)+'</text>';
-      h+='<text x="'+cx+'" y="'+(y+24)+'" text-anchor="middle" font-size="8" fill="rgba(190,210,240,.75)" font-family="sans-serif">'+ROOMS[i].name+'</text>';}
+      h+='<text x="'+cx+'" y="'+(y+24)+'" text-anchor="middle" font-size="8" fill="rgba(190,210,240,.75)" font-family="sans-serif">'+ROOMDEF[i].name+'</text>';}
     s.innerHTML=h;
   }
 
   function toast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(function(){el.classList.remove('show');},1600);}
 
-  // ---- task modal ----
+  // ---- task modal: ランで割り当てたパズルを描画 ----
   function openTask(){
-    var tk=ROOMS[ri].task; if(!tk||tk.done)return; modal.style.display='flex';
-    if(tk.type==='keypad'){
-      card.innerHTML='<h4>'+tk.title+'（'+tk.code+'）</h4><div class="read" id="rd">_ _ _ _</div><div class="keys" id="ks"></div>';
-      var code='',rd=document.getElementById('rd'),ks=document.getElementById('ks');
-      for(var n=1;n<=9;n++){(function(n){var d=document.createElement('div');d.className='key';d.textContent=n;
-        d.onclick=function(){if(code.length>=4)return;code+=n;rr();
-          if(code.length===4){ if(code===tk.code){[].forEach.call(ks.children,function(k){k.classList.add('ok');});setTimeout(finish,350);}
-            else setTimeout(function(){code='';rr();},400);} };
-        ks.appendChild(d);})(n);}
-      function rr(){var a=code.split('');while(a.length<4)a.push('_');rd.textContent=a.join(' ');}
-    } else {
-      card.innerHTML='<h4>'+tk.title+'</h4><button class="act" id="ac">'+tk.label+'</button><div class="pbar" id="pb"><i></i></div>';
-      var ac=document.getElementById('ac'),pb=document.getElementById('pb'),fl=pb.firstChild;
-      ac.onclick=function(){ac.disabled=true;pb.style.display='block';var p=0;var iv=setInterval(function(){p+=4;fl.style.width=p+'%';if(p>=100){clearInterval(iv);finish();}},42);};
-    }
-    function finish(){ tk.done=true; doneCount++; objn.textContent=doneCount+' / '+TOTAL+' 完了';
-      modal.style.display='none'; loadRoom(); toast('タスク完了！  '+doneCount+' / '+TOTAL);
-      if(doneCount>=TOTAL){ setTimeout(function(){toast('全タスク完了！緊急会議で裏切り者を探せ（次の実装）');},1700); } }
+    var rs=roomState[ri]; if(!rs.puz||rs.done)return; modal.style.display='flex';
+    rs.puz.render(card, finish);
+    function finish(){ rs.done=true; doneCount++; objn.textContent=doneCount+' / '+TOTAL+' 完了';
+      modal.style.display='none'; loadRoom(); toast('クリア！  '+doneCount+' / '+TOTAL); }
   }
   document.getElementById('mx').onclick=function(){modal.style.display='none';};
   document.getElementById('eb').onclick=function(){alert('緊急会議：本番では全員集合→議論→投票で1人を追放します');};
@@ -206,7 +319,7 @@
   st.addEventListener('pointermove',function(e){ if(dragV){dragV.cx=e.clientX;dragV.cy=e.clientY;} });
   addEventListener('pointerup',function(){dragV=null;});
 
-  function near(){ var tk=ROOMS[ri].task; if(!tk||tk.done)return false; return Math.abs(px-tk.x)<7 && Math.abs(pd-tk.d)<.2; }
+  function near(){ var rs=roomState[ri],sp=ROOMDEF[ri].spot; if(!rs.puz||rs.done)return false; return Math.abs(px-sp.x)<7 && Math.abs(pd-sp.d)<.2; }
   function tryInteract(){ if(near())openTask(); }
   spot.parentNode.addEventListener('click',function(){ if(near())openTask(); });
 
@@ -224,10 +337,10 @@
     var moving=(mvx||mvz);
 
     // 中央の鍵付き扉: その部屋の謎を解くと開く → 奥中央の扉へ歩いて次の部屋へ
-    var solved = ROOMS[ri].task ? ROOMS[ri].task.done : true;
+    var solved = roomState[ri].done;
     doorp.classList.toggle('show', solved && !locked);
     if(!locked && solved && Math.abs(px-50)<9 && pd<0.13){
-      if(ri<ROOMS.length-1) gotoRoom(ri+1); else win();
+      if(ri<ROOMDEF.length-1) gotoRoom(ri+1); else win();
     }
 
     // place hero with depth scale
@@ -249,11 +362,26 @@
     requestAnimationFrame(frame);
   }
 
-  // O2 timer
-  var sec=300,clk=document.getElementById('clock');
-  setInterval(function(){if(sec>0)sec--;var m=Math.floor(sec/60),s=sec%60;clk.textContent=m+':'+(s<10?'0':'')+s;},1000);
+  // O2 timer（開始後に作動）
+  var sec=300,clk=document.getElementById('clock'),timerStarted=false;
+  function startTimer(){ if(timerStarted)return; timerStarted=true;
+    setInterval(function(){if(sec>0)sec--;var m=Math.floor(sec/60),s=sec%60;clk.textContent=m+':'+(s<10?'0':'')+s;},1000); }
 
-  bg.classList.add('on'); loadRoom(); requestAnimationFrame(frame);
+  // ---- スタート画面: 難易度＋モード選択 → ラン生成 → 開始 ----
+  (function start(){
+    var dOpts=document.getElementById('diffOpts'),mOpts=document.getElementById('modeOpts'),seedIn=document.getElementById('seedIn');
+    function buildOpts(box,obj,getCur,setCur){ Object.keys(obj).forEach(function(k){var b=document.createElement('button');b.className='sopt';b.textContent=obj[k].label;
+      b.onclick=function(){setCur(k);[].forEach.call(box.children,function(c){c.classList.remove('on');});b.classList.add('on');};
+      if(k===getCur())b.classList.add('on'); box.appendChild(b);}); }
+    buildOpts(dOpts,DIFFS,function(){return curDiff;},function(k){curDiff=k;});
+    buildOpts(mOpts,MODES,function(){return curMode;},function(k){curMode=k;});
+    document.getElementById('playBtn').onclick=function(){
+      curSeed=(seedIn.value||'').trim(); makeRun();
+      document.getElementById('start').style.display='none';
+      ri=0; px=50; pd=.5; bg.classList.add('on'); loadRoom(); startTimer();
+      if(!window.__loopOn){window.__loopOn=true; requestAnimationFrame(frame);}
+    };
+  })();
 })();
 </script>
 
