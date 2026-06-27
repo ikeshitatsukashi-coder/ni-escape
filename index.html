@@ -1,6 +1,7 @@
 <!doctype html><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>N/I ESCAPE</title>
+<script type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 <style>
   *{margin:0;padding:0;box-sizing:border-box}
   html,body{height:100%;overflow:hidden;background:#05070f;
@@ -87,7 +88,7 @@
   <div class="vig"></div>
   <div class="spot" id="spot" style="display:none"><div class="ring"></div><div class="pin">!</div></div>
   <div id="hsh"></div>
-  <div id="hero"><img src="hero.png" alt="Torahachi"></div>
+  <div id="hero"><canvas id="hcv" style="width:100%;aspect-ratio:240/324;display:none"></canvas><img id="himg" src="hero.png" alt="Torahachi" style="width:100%;display:block"></div>
   <div id="tag">トラはち</div>
   <div class="darrow l" id="dl">◀</div>
   <div class="darrow r" id="dr">▶</div>
@@ -228,7 +229,9 @@
     var bob=moving?Math.abs(Math.sin(t*0.3))*9*sc:Math.sin(t*0.05)*3*sc;
     var feetTop=yFor(pd); // % from top where feet are
     hero.style.left=px+'%'; hero.style.top='calc('+feetTop+'% - '+(hero.offsetHeight)+'px - '+bob+'px)';
-    hero.style.transform='translateX(-50%) scaleX('+face+')';
+    var glbOn=(window.NIHERO&&window.NIHERO.ok&&window.NIHERO.ok());
+    hero.style.transform='translateX(-50%) scaleX('+(glbOn?1:face)+')';
+    if(window.NIHERO&&(mvx||mvz))window.NIHERO.setFace(Math.atan2(mvx,mvz));
     var shW=hpx*0.7;
     hsh.style.width=shW+'vw'; hsh.style.height=(shW*0.26)+'vw';
     hsh.style.left=px+'%'; hsh.style.top='calc('+feetTop+'% - '+(shW*0.13)+'vw'+(moving?' + 0px':'')+')';
@@ -245,4 +248,56 @@
 
   bg.classList.add('on'); loadRoom(); requestAnimationFrame(frame);
 })();
+</script>
+
+<script type="module">
+// ---- 3Dトラ(GLB)を2D背景に馴染ませて重ねる: トゥーン陰影 + ネオンのリムライト + 輪郭線 ----
+import * as THREE from 'three';
+import {GLTFLoader} from 'three/addons/loaders/GLTFLoader.js';
+import {DRACOLoader} from 'three/addons/loaders/DRACOLoader.js';
+const cv=document.getElementById('hcv'), img=document.getElementById('himg');
+function fallback(){ if(cv)cv.style.display='none'; if(img)img.style.display='block'; }
+try{
+  const renderer=new THREE.WebGLRenderer({canvas:cv,alpha:true,antialias:true});
+  renderer.setPixelRatio(Math.min(2,window.devicePixelRatio||1));
+  renderer.outputColorSpace=THREE.SRGBColorSpace;
+  const scene=new THREE.Scene();
+  const FH=2.8; // フレーム高さ(ワールド)
+  const cam=new THREE.OrthographicCamera(-1,1,FH,0,-10,10);
+  function resize(){ const w=cv.clientWidth,h=cv.clientHeight; if(!w||!h)return;
+    renderer.setSize(w,h,false); const a=w/h, HH=FH/2;
+    cam.left=-HH*a; cam.right=HH*a; cam.top=HH; cam.bottom=-HH;
+    cam.position.set(0,1.2,6); cam.lookAt(0,1.2,0); cam.updateProjectionMatrix(); }
+  scene.add(new THREE.AmbientLight(0x8294b8,1.0));
+  const key=new THREE.DirectionalLight(0xfff1e6,0.45); key.position.set(2,4,4); scene.add(key);
+  const rimT=new THREE.DirectionalLight(0x2ff2d0,1.25); rimT.position.set(-3.5,2,-1.5); scene.add(rimT); // teal neon
+  const rimM=new THREE.DirectionalLight(0xff3da0,1.0); rimM.position.set(3.5,1.2,-2); scene.add(rimM);   // magenta neon
+  // トゥーン用グラデ(段階陰影)
+  const grad=(function(){const c=document.createElement('canvas');c.width=4;c.height=1;const x=c.getContext('2d');
+    const st=[96,150,205,255]; for(let i=0;i<4;i++){x.fillStyle='rgb('+st[i]+','+st[i]+','+st[i]+')';x.fillRect(i,0,1,1);}
+    const t=new THREE.CanvasTexture(c); t.colorSpace=THREE.SRGBColorSpace; t.minFilter=t.magFilter=THREE.NearestFilter; t.needsUpdate=true; return t;})();
+  let model=null, ready=false, faceCur=0, faceTgt=0;
+  const gl=new GLTFLoader(); const dr=new DRACOLoader();
+  dr.setDecoderPath('https://unpkg.com/three@0.160.0/examples/jsm/libs/draco/'); gl.setDRACOLoader(dr);
+  gl.load('hero.glb',function(g){
+    model=g.scene;
+    let box=new THREE.Box3().setFromObject(model), s=new THREE.Vector3(); box.getSize(s);
+    model.scale.setScalar(2.4/(s.y||1));
+    box=new THREE.Box3().setFromObject(model); const c2=box.getCenter(new THREE.Vector3());
+    model.position.x-=c2.x; model.position.z-=c2.z; model.position.y-=box.min.y;
+    var meshes=[]; model.traverse(function(o){ if(o.isMesh)meshes.push(o); }); // 先に集める(追加中の再帰防止)
+    meshes.forEach(function(o){ const m=o.material;
+      o.material=new THREE.MeshToonMaterial({map:(m&&m.map)||null,color:(m&&m.map)?0xffffff:((m&&m.color)||0xffffff),gradientMap:grad});
+      const ol=new THREE.Mesh(o.geometry,new THREE.MeshBasicMaterial({color:0x0a0c14,side:THREE.BackSide}));
+      ol.scale.multiplyScalar(1.06); o.add(ol);
+    });
+    scene.add(model); ready=true; cv.style.display='block'; if(img)img.style.display='none';
+  }, undefined, function(){ fallback(); });
+  window.NIHERO={ setFace:function(a){faceTgt=a;}, ok:function(){return ready;} };
+  resize(); window.addEventListener('resize',resize);
+  (function loop(){ try{ resize();
+    if(model){ let d=faceTgt-faceCur; while(d>Math.PI)d-=6.283; while(d<-Math.PI)d+=6.283; faceCur+=d*0.18; model.rotation.y=faceCur; }
+    renderer.render(scene,cam);
+  }catch(e){} requestAnimationFrame(loop); })();
+}catch(e){ fallback(); }
 </script>
