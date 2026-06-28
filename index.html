@@ -362,6 +362,7 @@
 
   // ---- task modal: ランで割り当てたパズルを描画 ----
   function openTask(){
+    if(modal.style.display==='flex')return; // 既に開いてたら再描画しない(クリック貫通でのリセット防止)
     var rs=roomState[ri]; if(!rs.puz||rs.done)return; modal.style.display='flex';
     rs.puz.render(card, finish);
     function finish(){ rs.done=true; doneCount++; objn.textContent=doneCount+' / '+TOTAL+' 完了';
@@ -400,7 +401,9 @@
 
   function near(){ var rs=roomState[ri],sp=ROOMDEF[ri].spot; if(!rs.puz||rs.done)return false; return Math.abs(px-sp.x)<7 && Math.abs(pd-sp.d)<.2; }
   function tryInteract(){ if(near())openTask(); }
-  spot.parentNode.addEventListener('click',function(){ if(near())openTask(); });
+  spot.parentNode.addEventListener('click',function(){ if(modal.style.display==='flex'||document.getElementById('meet').style.display==='flex')return; if(near())openTask(); });
+  modal.addEventListener('click',function(e){e.stopPropagation();}); // モーダル内クリックを背景に渡さない
+  document.getElementById('meet').addEventListener('click',function(e){e.stopPropagation();});
 
   function frame(){
     t++; var mvx=0,mvz=0;
