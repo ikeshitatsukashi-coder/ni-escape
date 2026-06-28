@@ -40,6 +40,12 @@
   #win p{color:#bcd}
   #win button{margin-top:14px;cursor:pointer;background:linear-gradient(180deg,#2ff2d0,#159e85);border:none;border-radius:30px;
     padding:13px 34px;color:#04241d;font-weight:800;font-size:16px}
+  #lose{position:absolute;inset:0;z-index:40;display:none;flex-direction:column;align-items:center;justify-content:center;
+    background:radial-gradient(circle at 50% 40%,#3b1014,#04060e);text-align:center;gap:8px;padding:20px}
+  #lose h1{font-size:44px;color:#ff6a6a;text-shadow:0 0 26px rgba(255,90,90,.55);letter-spacing:.06em}
+  #lose p{color:#d9c2c2}
+  #lose button{margin-top:14px;cursor:pointer;background:linear-gradient(180deg,#ff6a6a,#c13838);border:none;border-radius:30px;
+    padding:13px 34px;color:#fff;font-weight:800;font-size:16px}
 
   .pan{position:absolute;background:rgba(10,17,36,.62);backdrop-filter:blur(13px);-webkit-backdrop-filter:blur(13px);
     border:1px solid rgba(126,200,255,.2);border-radius:15px;box-shadow:0 10px 30px rgba(0,0,0,.5);z-index:10}
@@ -148,7 +154,8 @@
     </div>
   </div>
   <div id="toast"></div>
-  <div id="win"><h1>ESCAPE SUCCESS</h1><p>全部屋の謎を解いて脱出した！（※これは試作版です）</p><button onclick="location.reload()">もう一度</button></div>
+  <div id="win"><h1>ESCAPE SUCCESS</h1><p>全部屋の謎を解き、裏切り者を確保して脱出した！</p><button onclick="location.reload()">もう一度</button></div>
+  <div id="lose"><h1>GAME OVER</h1><p>酸素が尽きた…（裏切り者の妨害で時間切れ）</p><button onclick="location.reload()">もう一度</button></div>
   <div id="start">
     <h1>N/I <b>ESCAPE</b></h1>
     <p>難易度とモードを選んで脱出せよ</p>
@@ -378,7 +385,7 @@
     impostor=pickR(rng,SUSPECTS); cleared=[]; caught=false; sabCount=0; sabT=0;
     doneCount=0; objn.textContent='0 / '+TOTAL+' 完了';
   }
-  var ri=0, px=50, pd=.5, face=1, t=0, locked=false;
+  var ri=0, px=50, pd=.5, face=1, t=0, locked=false, escWarn=false;
   var BACKY=70, FRONTY=94, SB=.64, SF=1.16, BASEW=13.5; // perspective floor mapping（奥=床の終わり / 手前=さらに前へ）
 
   var bg=document.getElementById('bg'), hero=document.getElementById('hero'), hsh=document.getElementById('hsh'),
@@ -407,7 +414,8 @@
     if(n<0||n>=ROOMDEF.length)return; locked=true; SFX.door(); bg.classList.remove('on'); doorp.classList.remove('show');
     setTimeout(function(){ ri=n; px=50; pd=.85; loadRoom(); bg.classList.add('on'); locked=false; },330); // 扉から入室→手前中央に登場
   }
-  function win(){ locked=true; document.getElementById('win').style.display='flex'; }
+  function win(){ locked=true; gameOn=false; document.getElementById('win').style.display='flex'; }
+  function lose(){ locked=true; gameOn=false; document.getElementById('lose').style.display='flex'; }
 
   function drawMap(){
     var s=document.getElementById('mapsvg'),W=208,n=ROOMDEF.length,gap=W/n,r=12,y=30,h='';
@@ -451,7 +459,7 @@
     sec=Math.max(0,sec-12);                                  // O2リーク(軽め)
     // 手がかり: 犯人以外で未確定の1人にアリバイ(無実)が判明
     var cand=SUSPECTS.filter(function(s){return s.name!==impostor.name && cleared.indexOf(s.name)<0;});
-    if(cand.length>1){ var inn=pickR(makeRng('c'+sabCount+impostor.name),cand); cleared.push(inn.name); }
+    if(cand.length>=1){ var inn=pickR(makeRng('c'+sabCount+impostor.name),cand); cleared.push(inn.name); } // 無実を順に消す→最後は犯人1人に絞れる
     var remain=SUSPECTS.length-cleared.length;
     SFX.eject();
     toast('⚠ 裏切り者が妨害！ O2 −12秒 ／ アリバイ判明 → 容疑者 残り'+remain+'人'+(remain<=1?'（特定！🔍告発へ）':''));
@@ -510,10 +518,16 @@
 
     // 中央の鍵付き扉: その部屋の謎を解くと開く → 奥中央の扉へ歩いて次の部屋へ
     var solved = roomState[ri].cells.every(function(c){return c.done;});
+    var lastRoom = ri===ROOMDEF.length-1;
     doorp.classList.toggle('show', solved && !locked);
-    if(!locked && solved && Math.abs(px-50)<9 && pd<0.13){
-      if(ri<ROOMDEF.length-1) gotoRoom(ri+1); else win();
+    if(doorp.classList.contains('show')) doorp.textContent = (lastRoom&&!caught)?'🔍 裏切り者を確保しないと脱出できない':'▲ 扉が開いた — 中央の扉へ進む';
+    var atDoor = solved && Math.abs(px-50)<9 && pd<0.13;
+    if(!locked && atDoor){
+      if(!lastRoom) gotoRoom(ri+1);
+      else if(caught) win();
+      else if(!escWarn){ escWarn=true; toast('⚠ 脱出には裏切り者の確保が必要！ 🔍告発で特定せよ'); openAccuse(''); }
     }
+    if(!atDoor) escWarn=false;
 
     // place hero with depth scale
     var sc=scFor(pd), wv=Wv(), hpx=BASEW*sc; // width in vw
@@ -535,10 +549,10 @@
   }
 
   // O2 timer ＆ サボタージュ（開始後に作動）
-  var sec=300,sabT=0,clk=document.getElementById('clock'),timerStarted=false;
+  var sec=420,sabT=0,clk=document.getElementById('clock'),timerStarted=false;
   function modalsOpen(){return modal.style.display==='flex'||document.getElementById('meet').style.display==='flex'||document.getElementById('win').style.display==='flex';}
   function startTimer(){ if(timerStarted)return; timerStarted=true;
-    setInterval(function(){ if(sec>0)sec--; var m=Math.floor(sec/60),s=sec%60;clk.textContent=m+':'+(s<10?'0':'')+s; },1000); }
+    setInterval(function(){ if(sec>0){sec--;} else if(gameOn){ lose(); } var m=Math.floor(sec/60),s=sec%60;clk.textContent=m+':'+(s<10?'0':'')+s; },1000); }
     // サボタージュは「タスクを2つ解くごと」に発生(進むほど裏切り者が妨害)＝openTaskから呼ぶ
 
   // ---- スタート画面: 難易度＋モード選択 → ラン生成 → 開始 ----
