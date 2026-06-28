@@ -486,16 +486,20 @@
   // ---- 探偵: 妨害が起きる → 現場(🔍)が残る → プレイヤーが調べて手がかりを得る → 自分で照合して告発 ----
   function triggerSabotage(){
     if(caught) return; sabCount++; sec=Math.max(0,sec-12);   // O2リーク
-    if(foundClues.length<clues.length){ // まだ得ていない手がかりがある→現場を現在の部屋に残す
-      var spot=pickR(makeRng('sc'+sabCount),[{x:42,d:.62},{x:58,d:.62},{x:50,d:.58}]);
-      scene={room:ri,x:spot.x,d:spot.d,clueIdx:foundClues.length}; loadRoom();
-      toast('⚠ 妨害発生！ O2−12 ／ 現場に痕跡が… 🔍を調べろ');
+    if(foundClues.length<clues.length){ // まだ得ていない手がかり→現場(分析パズル付き)を現在の部屋に残す
+      var srng=makeRng('sc'+sabCount+impostor.name);
+      var spot=pickR(srng,[{x:42,d:.62},{x:58,d:.62},{x:50,d:.58}]);
+      var pid=pickR(srng,ALLIDS), ptier=Math.max(1,Math.min(2,(DIFFS[curDiff].curve[ri]||1)));
+      scene={room:ri,x:spot.x,d:spot.d,clueIdx:foundClues.length,puz:PUZZLES[pid].make(ptier,srng)};
+      loadRoom();
+      toast('⚠ 妨害発生！ O2−12 ／ 現場に痕跡が残った。🔍を調べて<b>分析パズルを解けば</b>手がかりが手に入る');
     } else toast('⚠ 妨害発生！ O2−12 ／ 手がかりは出揃った。🔍告発で犯人を指名せよ');
   }
   function investigate(){
-    if(!scene)return; var clue=clues[scene.clueIdx]; if(foundClues.indexOf(clue)<0)foundClues.push(clue);
-    scene=null; loadRoom(); SFX.ok(); flashOk();
-    toast('🔍 手がかり入手: '+clue);            // 証拠ログに保存(告発画面でいつでも確認可)
+    if(!scene||modal.style.display==='flex')return; var sc=scene; modal.style.display='flex';
+    sc.puz.render(card, function(){ modal.style.display='none'; flashOk(); SFX.ok();
+      var clue=clues[sc.clueIdx]; if(foundClues.indexOf(clue)<0)foundClues.push(clue);
+      scene=null; loadRoom(); toast('🔍 分析成功！手がかり入手: '+clue); }); // 分析パズルを解いて証拠を“獲得”
   }
   function susTag(s){ return '<div style="font-size:10px;color:#9fb6d8;margin-top:2px;line-height:1.45">'+s.color+'／サングラス'+(s.sun?'有':'無')+'／'+s.build+'</div>'; }
   function openAccuse(){
