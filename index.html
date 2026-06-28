@@ -451,7 +451,11 @@
     s.innerHTML=h;
   }
 
-  function toast(msg){var el=document.getElementById('toast');el.textContent=msg;el.classList.add('show');setTimeout(function(){el.classList.remove('show');},1600);}
+  var _toastT;
+  function toast(msg,ms){var el=document.getElementById('toast');el.innerHTML=msg+'<div style="font-size:10px;color:#9fb6d8;margin-top:6px">タップで閉じる</div>';
+    el.classList.add('show');el.style.pointerEvents='auto';el.style.cursor='pointer';
+    function hide(){el.classList.remove('show');el.style.pointerEvents='none';clearTimeout(_toastT);}
+    el.onclick=hide; clearTimeout(_toastT); _toastT=setTimeout(hide,ms||4500);}
 
   // ---- 効果音(WebAudio・ファイル不要) ----
   var AC; function ac(){ if(!AC){try{AC=new (window.AudioContext||window.webkitAudioContext)();}catch(e){}} return AC; }
