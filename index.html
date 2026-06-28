@@ -439,7 +439,8 @@
     cell.puz.render(card, function finish(){ cell.done=true; doneCount++; objn.textContent=doneCount+' / '+TOTAL+' 完了';
       modal.style.display='none'; flashOk(); SFX.ok(); loadRoom();
       var rest=roomState[ri].cells.filter(function(c){return !c.done;}).length;
-      toast(rest? 'タスク完了（この部屋 残り'+rest+'）' : 'この部屋クリア！扉が開いた'); });
+      toast(rest? 'タスク完了（この部屋 残り'+rest+'）' : 'この部屋クリア！扉が開いた');
+      if(gameOn&&!caught&&doneCount%2===0){ setTimeout(triggerSabotage,1100); } }); // 進むほど裏切り者が妨害(2タスクごと)
   }
   document.getElementById('mx').onclick=function(){modal.style.display='none';};
 
@@ -447,19 +448,21 @@
   function triggerSabotage(){
     if(caught) return;
     sabCount++;
-    sec=Math.max(0,sec-18);                                  // O2リーク
-    // 手がかり: 無実を1人あぶり出す(犯人以外で未確定の中から)
+    sec=Math.max(0,sec-12);                                  // O2リーク(軽め)
+    // 手がかり: 犯人以外で未確定の1人にアリバイ(無実)が判明
     var cand=SUSPECTS.filter(function(s){return s.name!==impostor.name && cleared.indexOf(s.name)<0;});
-    var clue=''; if(cand.length>1){ var inn=pickR(makeRng('c'+sabCount+impostor.name),cand); cleared.push(inn.name); clue='手がかり: '+inn.name+' にはアリバイがあった（無実）'; }
-    else clue='ほぼ特定できたはず…';
-    SFX.eject(); toast('⚠ サボタージュ発生！ O2が漏れている');
-    openAccuse(clue);
+    if(cand.length>1){ var inn=pickR(makeRng('c'+sabCount+impostor.name),cand); cleared.push(inn.name); }
+    var remain=SUSPECTS.length-cleared.length;
+    SFX.eject();
+    toast('⚠ 裏切り者が妨害！ O2 −12秒 ／ アリバイ判明 → 容疑者 残り'+remain+'人'+(remain<=1?'（特定！🔍告発へ）':''));
+    // 自動では告発画面を開かない。手がかりだけ蓄積し、プレイヤーが🔍告発で確認・告発する。
   }
   function openAccuse(clue){
     var meet=document.getElementById('meet'),grid=document.getElementById('meetGrid'),res=document.getElementById('meetRes');
     meet.style.display='flex'; grid.innerHTML='';
+    var remain=SUSPECTS.length-cleared.length;
     if(caught){ res.innerHTML='裏切り者は確保済み。妨害は止まっている。'; }
-    else res.innerHTML=(clue?'<b style="color:#7dffb0">'+clue+'</b><br>':'')+'妨害している裏切り者を告発せよ（無実は除外済み）';
+    else res.innerHTML='妨害のたびに無実が判明する。<b>1人に絞れてから告発</b>しよう（誤認はO2ペナルティ）<br>容疑者 残り <b style="color:#ffd86a">'+remain+'人</b>';
     SUSPECTS.forEach(function(s){ var c=document.createElement('div'); c.className='suscard'; var isClear=cleared.indexOf(s.name)>=0;
       c.innerHTML='<img src="'+s.img+'"><span>'+s.name+'</span>'+(isClear?'<span style="display:block;font-size:10px;color:#7d8aa6">無実</span>':'');
       if(isClear||caught){ c.style.opacity='.35'; c.style.pointerEvents='none'; }
@@ -535,11 +538,8 @@
   var sec=300,sabT=0,clk=document.getElementById('clock'),timerStarted=false;
   function modalsOpen(){return modal.style.display==='flex'||document.getElementById('meet').style.display==='flex'||document.getElementById('win').style.display==='flex';}
   function startTimer(){ if(timerStarted)return; timerStarted=true;
-    setInterval(function(){ if(sec>0)sec--; var m=Math.floor(sec/60),s=sec%60;clk.textContent=m+':'+(s<10?'0':'')+s;
-      if(sec<=0&&!document.getElementById('win').style.display){ /* O2切れ: ゲームオーバー扱いは今は注意のみ */ }
-      // サボタージュ: 一定間隔で発生(モーダル中/確保後は進めない)
-      if(gameOn&&!caught&&!modalsOpen()){ sabT++; if(sabT>=38){ sabT=0; triggerSabotage(); } }
-    },1000); }
+    setInterval(function(){ if(sec>0)sec--; var m=Math.floor(sec/60),s=sec%60;clk.textContent=m+':'+(s<10?'0':'')+s; },1000); }
+    // サボタージュは「タスクを2つ解くごと」に発生(進むほど裏切り者が妨害)＝openTaskから呼ぶ
 
   // ---- スタート画面: 難易度＋モード選択 → ラン生成 → 開始 ----
   (function start(){
