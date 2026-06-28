@@ -121,7 +121,7 @@
 <div id="stage">
   <div class="bg" id="bg"></div>
   <div class="vig"></div>
-  <div class="spot" id="spot" style="display:none"><div class="ring"></div><div class="pin">!</div></div>
+  <div id="spots"></div>
   <div id="hsh"></div>
   <div id="hero"><canvas id="hcv" style="width:100%;aspect-ratio:240/324;display:none"></canvas><img id="himg" src="hero.png" alt="Torahachi" style="width:100%;display:block"></div>
   <div id="tag">トラはち</div>
@@ -161,15 +161,15 @@
 
 <script>
 (function(){
-  // 部屋(背景/名前/謎スポット位置)は固定、謎の中身はランで抽選
+  // 部屋(背景/名前)は固定、謎スポットは複数(3箇所分の位置)。謎の中身と個数はランで決定
   var ROOMDEF=[
-    {bg:'bg1.jpg',name:'機関室',spot:{x:72,d:.36}},
-    {bg:'bg2.jpg',name:'制御室',spot:{x:28,d:.5}},
-    {bg:'bg3.jpg',name:'医務室',spot:{x:70,d:.45}},
-    {bg:'bg4.jpg',name:'コア室',spot:{x:50,d:.5}}
+    {bg:'bg1.jpg',name:'機関室',spots:[{x:30,d:.5},{x:72,d:.36},{x:50,d:.72}]},
+    {bg:'bg2.jpg',name:'制御室',spots:[{x:26,d:.55},{x:74,d:.42},{x:50,d:.72}]},
+    {bg:'bg3.jpg',name:'医務室',spots:[{x:30,d:.46},{x:70,d:.5},{x:50,d:.72}]},
+    {bg:'bg4.jpg',name:'コア室',spots:[{x:30,d:.5},{x:70,d:.5},{x:50,d:.74}]}
   ];
-  var TOTAL=ROOMDEF.length, doneCount=0;
-  var roomState=ROOMDEF.map(function(){return {done:false,puz:null};});
+  var TOTAL=0, doneCount=0;
+  var roomState=[]; // makeRunで {cells:[{x,d,puz,done}...]} を構築
 
   // ---------- RNG(シード対応) ----------
   function makeRng(seed){ var h=1779033703^seed.length; for(var i=0;i<seed.length;i++){h=Math.imul(h^seed.charCodeAt(i),3432918353);h=h<<13|h>>>19;}
@@ -306,7 +306,7 @@
     }}
   };
   var ALLIDS=Object.keys(PUZZLES);
-  var DIFFS={easy:{label:'やさしい',curve:[1,1,2,2]},normal:{label:'ふつう',curve:[1,2,2,3]},hard:{label:'むずい',curve:[2,2,3,3]},expert:{label:'エキスパート',curve:[2,3,3,3]}};
+  var DIFFS={easy:{label:'やさしい',curve:[1,1,2,2],tasks:2},normal:{label:'ふつう',curve:[1,2,2,3],tasks:3},hard:{label:'むずい',curve:[2,2,3,3],tasks:3},expert:{label:'エキスパート',curve:[2,3,3,3],tasks:3}};
   var MODES={any:{label:'おまかせ',ids:null},cipher:{label:'暗号系',ids:['keypad','number']},mech:{label:'メカ系',ids:['wiring','sequence','switches']},obs:{label:'観察系',ids:['observe','uv','sequence']}};
   var curDiff='normal',curMode='any',curSeed='';
   // ---- 人狼: 容疑者(N/Iメンバー)とインポスター ----
@@ -314,9 +314,12 @@
   var impostor=null, ejected=[], caught=false;
   function makeRun(){
     var seed=curSeed||(''+Date.now()+Math.floor(Math.random()*1e6)); var rng=makeRng(seed);
-    var ids=MODES[curMode].ids||ALLIDS, curve=DIFFS[curDiff].curve, prev='';
-    for(var i=0;i<ROOMDEF.length;i++){ var cand=ids.filter(function(x){return x!==prev;}); if(!cand.length)cand=ids;
-      var id=pickR(rng,cand); prev=id; roomState[i].done=false; roomState[i].puz=PUZZLES[id].make(curve[i],rng); }
+    var ids=MODES[curMode].ids||ALLIDS, curve=DIFFS[curDiff].curve, per=DIFFS[curDiff].tasks, prev='';
+    roomState=[]; TOTAL=0;
+    for(var i=0;i<ROOMDEF.length;i++){ var cells=[], spots=ROOMDEF[i].spots;
+      for(var c=0;c<per && c<spots.length;c++){ var cand=ids.filter(function(x){return x!==prev;}); if(!cand.length)cand=ids;
+        var id=pickR(rng,cand); prev=id; cells.push({x:spots[c].x,d:spots[c].d,puz:PUZZLES[id].make(curve[i],rng),done:false}); }
+      roomState[i]={cells:cells}; TOTAL+=cells.length; }
     impostor=pickR(rng,SUSPECTS); ejected=[]; caught=false;
     doneCount=0; objn.textContent='0 / '+TOTAL+' 完了';
   }
@@ -324,7 +327,7 @@
   var BACKY=70, FRONTY=94, SB=.64, SF=1.16, BASEW=13.5; // perspective floor mapping（奥=床の終わり / 手前=さらに前へ）
 
   var bg=document.getElementById('bg'), hero=document.getElementById('hero'), hsh=document.getElementById('hsh'),
-      tag=document.getElementById('tag'), spot=document.getElementById('spot'), doorp=document.getElementById('doorp'),
+      tag=document.getElementById('tag'), spotsLayer=document.getElementById('spots'), doorp=document.getElementById('doorp'),
       ipr=document.getElementById('ipr'), here=document.getElementById('here'),
       objn=document.getElementById('objn'), modal=document.getElementById('modal'), card=document.getElementById('card'),
       H=()=>document.getElementById('stage').clientHeight, Wv=()=>document.getElementById('stage').clientWidth;
@@ -336,13 +339,13 @@
   }
 
   function loadRoom(){
-    var r=ROOMDEF[ri], sp=r.spot, dn=roomState[ri].done;
+    var r=ROOMDEF[ri], cells=roomState[ri].cells;
     bg.style.backgroundImage='url("'+r.bg+'")';
     here.textContent=r.name;
-    spot.style.display='block'; spot.classList.toggle('done',dn);
-    spot.querySelector('.pin').textContent=dn?'✓':'!';
-    spot.style.left=sp.x+'%'; spot.style.top=yFor(sp.d)+'%';
-    spot.style.width=(74*scFor(sp.d))+'px'; spot.style.transform='translate(-50%,-50%)';
+    spotsLayer.innerHTML='';
+    cells.forEach(function(cell){ var m=document.createElement('div'); m.className='spot'+(cell.done?' done':'');
+      var sc=scFor(cell.d); m.style.left=cell.x+'%'; m.style.top=yFor(cell.d)+'%'; m.style.width=(74*sc)+'px'; m.style.transform='translate(-50%,-50%)';
+      m.innerHTML='<div class="ring"></div><div class="pin">'+(cell.done?'✓':'!')+'</div>'; spotsLayer.appendChild(m); });
     drawMap();
   }
   function gotoRoom(n){
@@ -354,7 +357,7 @@
   function drawMap(){
     var s=document.getElementById('mapsvg'),W=208,n=ROOMDEF.length,gap=W/n,r=12,y=30,h='';
     for(var i=0;i<n-1;i++){h+='<line x1="'+(gap*(i+0.5))+'" y1="'+y+'" x2="'+(gap*(i+1.5))+'" y2="'+y+'" stroke="rgba(126,200,255,.4)" stroke-width="3"/>';}
-    for(var i=0;i<n;i++){var cx=gap*(i+0.5);var cur=i===ri;var dn=roomState[i].done;
+    for(var i=0;i<n;i++){var cx=gap*(i+0.5);var cur=i===ri;var dn=roomState[i].cells.every(function(c){return c.done;});
       var col=cur?'#2ff2d0':(!dn?'rgba(255,216,106,.9)':'rgba(126,200,255,.5)');
       h+='<circle cx="'+cx+'" cy="'+y+'" r="'+r+'" fill="'+(cur?'rgba(47,242,208,.25)':'rgba(20,34,64,.8)')+'" stroke="'+col+'" stroke-width="'+(cur?3:2)+'"/>';
       h+='<text x="'+cx+'" y="'+(y+4)+'" text-anchor="middle" font-size="11" fill="'+col+'" font-family="sans-serif">'+(i+1)+'</text>';
@@ -374,13 +377,14 @@
     eject:function(){beep(200,0.45,'sawtooth',0.07);setTimeout(function(){beep(120,0.5,'sawtooth',0.06);},150);} };
   function flashOk(){var f=document.getElementById('okflash');if(!f)return;f.style.opacity='.55';setTimeout(function(){f.style.opacity='0';},200);}
 
-  // ---- task modal: ランで割り当てたパズルを描画 ----
-  function openTask(){
+  // ---- task modal: 指定セルのパズルを描画(1部屋に複数) ----
+  function openTask(ci){
     if(modal.style.display==='flex')return; // 既に開いてたら再描画しない(クリック貫通でのリセット防止)
-    var rs=roomState[ri]; if(!rs.puz||rs.done)return; modal.style.display='flex';
-    rs.puz.render(card, finish);
-    function finish(){ rs.done=true; doneCount++; objn.textContent=doneCount+' / '+TOTAL+' 完了';
-      modal.style.display='none'; flashOk(); SFX.ok(); loadRoom(); toast('クリア！  '+doneCount+' / '+TOTAL); }
+    var cell=roomState[ri].cells[ci]; if(!cell||cell.done)return; modal.style.display='flex';
+    cell.puz.render(card, function finish(){ cell.done=true; doneCount++; objn.textContent=doneCount+' / '+TOTAL+' 完了';
+      modal.style.display='none'; flashOk(); SFX.ok(); loadRoom();
+      var rest=roomState[ri].cells.filter(function(c){return !c.done;}).length;
+      toast(rest? 'タスク完了（この部屋 残り'+rest+'）' : 'この部屋クリア！扉が開いた'); });
   }
   document.getElementById('mx').onclick=function(){modal.style.display='none';};
 
@@ -413,9 +417,11 @@
   st.addEventListener('pointermove',function(e){ if(dragV){dragV.cx=e.clientX;dragV.cy=e.clientY;} });
   addEventListener('pointerup',function(){dragV=null;});
 
-  function near(){ var rs=roomState[ri],sp=ROOMDEF[ri].spot; if(!rs.puz||rs.done)return false; return Math.abs(px-sp.x)<7 && Math.abs(pd-sp.d)<.2; }
-  function tryInteract(){ if(near())openTask(); }
-  spot.parentNode.addEventListener('click',function(){ if(modal.style.display==='flex'||document.getElementById('meet').style.display==='flex')return; if(near())openTask(); });
+  function nearCell(){ var cells=roomState[ri].cells, best=-1, bd=1e9;
+    cells.forEach(function(c,i){ if(c.done)return; var dx=Math.abs(px-c.x),dz=Math.abs(pd-c.d); if(dx<7&&dz<.2){var d=dx+dz*20; if(d<bd){bd=d;best=i;}} });
+    return best; }
+  function tryInteract(){ var i=nearCell(); if(i>=0)openTask(i); }
+  document.getElementById('stage').addEventListener('click',function(){ if(modal.style.display==='flex'||document.getElementById('meet').style.display==='flex')return; var i=nearCell(); if(i>=0)openTask(i); });
   modal.addEventListener('click',function(e){e.stopPropagation();}); // モーダル内クリックを背景に渡さない
   document.getElementById('meet').addEventListener('click',function(e){e.stopPropagation();});
 
@@ -433,7 +439,7 @@
     var moving=(mvx||mvz);
 
     // 中央の鍵付き扉: その部屋の謎を解くと開く → 奥中央の扉へ歩いて次の部屋へ
-    var solved = roomState[ri].done;
+    var solved = roomState[ri].cells.every(function(c){return c.done;});
     doorp.classList.toggle('show', solved && !locked);
     if(!locked && solved && Math.abs(px-50)<9 && pd<0.13){
       if(ri<ROOMDEF.length-1) gotoRoom(ri+1); else win();
@@ -454,7 +460,7 @@
     hsh.style.transform='translateX(-50%) scale('+(moving?0.92:1)+')';
     tag.style.left=px+'%'; tag.style.top='calc('+feetTop+'% - '+hero.offsetHeight+'px - '+bob+'px - 22px)';
 
-    ipr.classList.toggle('show', near());
+    ipr.classList.toggle('show', nearCell()>=0);
     requestAnimationFrame(frame);
   }
 
