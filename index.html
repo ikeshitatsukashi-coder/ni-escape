@@ -372,8 +372,28 @@
   var MODES={any:{label:'おまかせ',ids:null},cipher:{label:'暗号系',ids:['keypad','number','order']},mech:{label:'メカ系',ids:['wiring','sequence','switches','rotate','slider']},obs:{label:'観察系',ids:['observe','uv','match']}};
   var curDiff='normal',curMode='any',curSeed='';
   // ---- 人狼: 容疑者(N/Iメンバー)とインポスター ----
-  var SUSPECTS=[{name:'トラすけ',img:'sus_torasuke.png?v=2'},{name:'トラべえ',img:'sus_torabee.png?v=2'},{name:'ミツネ',img:'sus_mitsune.png?v=2'},{name:'アヤメ',img:'sus_ayame.png?v=2'},{name:'オセガ',img:'sus_osega.png?v=2'},{name:'オノサ',img:'sus_onosa.png?v=2'}];
-  var impostor=null, cleared=[], caught=false, sabCount=0, gameOn=false;
+  // 容疑者(見た目で分かる特徴: 色 / サングラス / 体格)。プレイヤーは手がかりと照合して自分で犯人を割り出す
+  var SUSPECTS=[
+    {name:'トラすけ',img:'sus_torasuke.png?v=2',color:'青',sun:true, build:'標準'},
+    {name:'トラべえ',img:'sus_torabee.png?v=2',color:'金',sun:true, build:'標準'},
+    {name:'ミツネ',  img:'sus_mitsune.png?v=2', color:'桃',sun:false,build:'標準'},
+    {name:'アヤメ',  img:'sus_ayame.png?v=2',   color:'紫',sun:false,build:'標準'},
+    {name:'オセガ',  img:'sus_osega.png?v=2',   color:'緑',sun:true, build:'標準'},
+    {name:'オノサ',  img:'sus_onosa.png?v=2',   color:'赤',sun:false,build:'筋肉'}
+  ];
+  var impostor=null, clues=[], foundClues=[], scene=null, caught=false, sabCount=0, gameOn=false;
+  // 犯人を一意に特定できる手がかり列を生成(見える特徴のみ: サングラス→体格→色)
+  function genClues(imp){
+    var cands=SUSPECTS.slice(), out=[];
+    var steps=[
+      {k:'sun',  q:imp.sun?'犯人は「サングラス」をかけていた':'犯人は「サングラス」をしていなかった'},
+      {k:'build',q:imp.build==='筋肉'?'犯人は「がっしりした体格」だった':'犯人は「標準体型」だった'},
+      {k:'color',q:'犯人の体の色は「'+imp.color+'」だ'}
+    ];
+    steps.forEach(function(st){ if(cands.length<=1)return; var nc=cands.filter(function(s){return s[st.k]===imp[st.k];}); if(nc.length<cands.length){cands=nc; out.push(st.q);} });
+    if(cands.length>1) out.push('犯人の体の色は「'+imp.color+'」だ');
+    return out;
+  }
   function makeRun(){
     var seed=curSeed||(''+Date.now()+Math.floor(Math.random()*1e6)); var rng=makeRng(seed);
     var ids=MODES[curMode].ids||ALLIDS, curve=DIFFS[curDiff].curve, per=DIFFS[curDiff].tasks, prev='';
@@ -382,7 +402,7 @@
       for(var c=0;c<per && c<spots.length;c++){ var cand=ids.filter(function(x){return x!==prev;}); if(!cand.length)cand=ids;
         var id=pickR(rng,cand); prev=id; cells.push({x:spots[c].x,d:spots[c].d,puz:PUZZLES[id].make(curve[i],rng),done:false}); }
       roomState[i]={cells:cells}; TOTAL+=cells.length; }
-    impostor=pickR(rng,SUSPECTS); cleared=[]; caught=false; sabCount=0; sabT=0;
+    impostor=pickR(rng,SUSPECTS); clues=genClues(impostor); foundClues=[]; scene=null; caught=false; sabCount=0; sabT=0;
     doneCount=0; objn.textContent='0 / '+TOTAL+' 完了';
   }
   var ri=0, px=50, pd=.5, face=1, t=0, locked=false, escWarn=false;
@@ -408,6 +428,9 @@
     cells.forEach(function(cell){ var m=document.createElement('div'); m.className='spot'+(cell.done?' done':'');
       var sc=scFor(cell.d); m.style.left=cell.x+'%'; m.style.top=yFor(cell.d)+'%'; m.style.width=(74*sc)+'px'; m.style.transform='translate(-50%,-50%)';
       m.innerHTML='<div class="ring"></div><div class="pin">'+(cell.done?'✓':'!')+'</div>'; spotsLayer.appendChild(m); });
+    if(scene&&scene.room===ri){ var sm=document.createElement('div'); sm.className='spot'; var ss=scFor(scene.d);
+      sm.style.left=scene.x+'%'; sm.style.top=yFor(scene.d)+'%'; sm.style.width=(74*ss)+'px'; sm.style.transform='translate(-50%,-50%)';
+      sm.innerHTML='<div class="ring" style="border-color:#ffd86a;box-shadow:0 0 16px rgba(255,216,106,.7)"></div><div class="pin">🔍</div>'; spotsLayer.appendChild(sm); }
     drawMap();
   }
   function gotoRoom(n){
@@ -452,36 +475,38 @@
   }
   document.getElementById('mx').onclick=function(){modal.style.display='none';};
 
-  // ---- 探偵: 妨害(サボタージュ)が起きる → 手がかりで無実が判明 → 告発 ----
+  // ---- 探偵: 妨害が起きる → 現場(🔍)が残る → プレイヤーが調べて手がかりを得る → 自分で照合して告発 ----
   function triggerSabotage(){
-    if(caught) return;
-    sabCount++;
-    sec=Math.max(0,sec-12);                                  // O2リーク(軽め)
-    // 手がかり: 犯人以外で未確定の1人にアリバイ(無実)が判明
-    var cand=SUSPECTS.filter(function(s){return s.name!==impostor.name && cleared.indexOf(s.name)<0;});
-    if(cand.length>=1){ var inn=pickR(makeRng('c'+sabCount+impostor.name),cand); cleared.push(inn.name); } // 無実を順に消す→最後は犯人1人に絞れる
-    var remain=SUSPECTS.length-cleared.length;
-    SFX.eject();
-    toast('⚠ 裏切り者が妨害！ O2 −12秒 ／ アリバイ判明 → 容疑者 残り'+remain+'人'+(remain<=1?'（特定！🔍告発へ）':''));
-    // 自動では告発画面を開かない。手がかりだけ蓄積し、プレイヤーが🔍告発で確認・告発する。
+    if(caught) return; sabCount++; sec=Math.max(0,sec-12);   // O2リーク
+    if(foundClues.length<clues.length){ // まだ得ていない手がかりがある→現場を現在の部屋に残す
+      var spot=pickR(makeRng('sc'+sabCount),[{x:42,d:.62},{x:58,d:.62},{x:50,d:.58}]);
+      scene={room:ri,x:spot.x,d:spot.d,clueIdx:foundClues.length}; loadRoom();
+      toast('⚠ 妨害発生！ O2−12 ／ 現場に痕跡が… 🔍を調べろ');
+    } else toast('⚠ 妨害発生！ O2−12 ／ 手がかりは出揃った。🔍告発で犯人を指名せよ');
   }
-  function openAccuse(clue){
+  function investigate(){
+    if(!scene)return; var clue=clues[scene.clueIdx]; if(foundClues.indexOf(clue)<0)foundClues.push(clue);
+    scene=null; loadRoom(); SFX.ok(); flashOk();
+    toast('🔍 手がかり入手: '+clue);            // 証拠ログに保存(告発画面でいつでも確認可)
+  }
+  function susTag(s){ return '<div style="font-size:10px;color:#9fb6d8;margin-top:2px;line-height:1.45">'+s.color+'／サングラス'+(s.sun?'有':'無')+'／'+s.build+'</div>'; }
+  function openAccuse(){
     var meet=document.getElementById('meet'),grid=document.getElementById('meetGrid'),res=document.getElementById('meetRes');
     meet.style.display='flex'; grid.innerHTML='';
-    var remain=SUSPECTS.length-cleared.length;
     if(caught){ res.innerHTML='裏切り者は確保済み。妨害は止まっている。'; }
-    else res.innerHTML='妨害のたびに無実が判明する。<b>1人に絞れてから告発</b>しよう（誤認はO2ペナルティ）<br>容疑者 残り <b style="color:#ffd86a">'+remain+'人</b>';
-    SUSPECTS.forEach(function(s){ var c=document.createElement('div'); c.className='suscard'; var isClear=cleared.indexOf(s.name)>=0;
-      c.innerHTML='<img src="'+s.img+'"><span>'+s.name+'</span>'+(isClear?'<span style="display:block;font-size:10px;color:#7d8aa6">無実</span>':'');
-      if(isClear||caught){ c.style.opacity='.35'; c.style.pointerEvents='none'; }
+    else { var log=foundClues.length?('<div style="text-align:left;display:inline-block">'+foundClues.map(function(c){return '・'+c;}).join('<br>')+'</div>'):'まだ手がかりが無い。現場(🔍)を調べよう。';
+      res.innerHTML='<div style="font-size:12px;color:#7fe9d6;letter-spacing:.1em;margin-bottom:4px">集めた証拠</div>'+log+'<div style="font-size:12px;color:#bcd6f5;margin-top:8px">手がかりと特徴を照合し、犯人を指名（誤認はO2−25）</div>'; }
+    SUSPECTS.forEach(function(s){ var c=document.createElement('div'); c.className='suscard';
+      c.innerHTML='<img src="'+s.img+'"><span>'+s.name+'</span>'+susTag(s);
+      if(caught){ c.style.opacity='.4'; c.style.pointerEvents='none'; }
       c.onclick=function(){ if(caught)return; [].forEach.call(grid.children,function(x){x.style.pointerEvents='none';}); SFX.click();
         if(s.name===impostor.name){ caught=true; SFX.eject(); c.style.boxShadow='0 0 24px #7dffb0'; res.innerHTML='⚠ <b>'+s.name+'</b> が裏切り者だった！ 確保成功 🎉 妨害が止まった';
-          setTimeout(function(){meet.style.display='none';toast('裏切り者を確保！もう妨害されない');},2400); }
-        else { SFX.ng(); c.style.opacity='.35'; cleared.push(s.name); sec=Math.max(0,sec-25); res.innerHTML='❌ '+s.name+' は無実だった…（誤認逮捕 O2 −25秒）';
-          setTimeout(function(){meet.style.display='none';},2000); } };
+          setTimeout(function(){meet.style.display='none';toast('裏切り者を確保！脱出可能に');},2400); }
+        else { SFX.ng(); c.style.boxShadow='0 0 20px #ff5a5a'; sec=Math.max(0,sec-25); res.innerHTML='❌ '+s.name+' は犯人ではなかった…（誤認逮捕 O2 −25秒）証拠を見直せ';
+          setTimeout(function(){[].forEach.call(grid.children,function(x){x.style.pointerEvents='';x.style.boxShadow='';});},1500); } };
       grid.appendChild(c); });
   }
-  document.getElementById('eb').onclick=function(){openAccuse('');};
+  document.getElementById('eb').onclick=function(){openAccuse();};
   document.getElementById('meetX').onclick=function(){document.getElementById('meet').style.display='none';};
 
   // ---- input ----
@@ -498,8 +523,9 @@
   function nearCell(){ var cells=roomState[ri].cells, best=-1, bd=1e9;
     cells.forEach(function(c,i){ if(c.done)return; var dx=Math.abs(px-c.x),dz=Math.abs(pd-c.d); if(dx<7&&dz<.2){var d=dx+dz*20; if(d<bd){bd=d;best=i;}} });
     return best; }
-  function tryInteract(){ var i=nearCell(); if(i>=0)openTask(i); }
-  document.getElementById('stage').addEventListener('click',function(){ if(modal.style.display==='flex'||document.getElementById('meet').style.display==='flex')return; var i=nearCell(); if(i>=0)openTask(i); });
+  function nearScene(){ return scene && scene.room===ri && Math.abs(px-scene.x)<7 && Math.abs(pd-scene.d)<.2; }
+  function tryInteract(){ var i=nearCell(); if(i>=0){openTask(i);return;} if(nearScene())investigate(); }
+  document.getElementById('stage').addEventListener('click',function(){ if(modal.style.display==='flex'||document.getElementById('meet').style.display==='flex')return; var i=nearCell(); if(i>=0){openTask(i);return;} if(nearScene())investigate(); });
   modal.addEventListener('click',function(e){e.stopPropagation();}); // モーダル内クリックを背景に渡さない
   document.getElementById('meet').addEventListener('click',function(e){e.stopPropagation();});
 
@@ -544,7 +570,7 @@
     hsh.style.transform='translateX(-50%) scale('+(moving?0.92:1)+')';
     tag.style.left=px+'%'; tag.style.top='calc('+feetTop+'% - '+hero.offsetHeight+'px - '+bob+'px - 22px)';
 
-    ipr.classList.toggle('show', nearCell()>=0);
+    ipr.classList.toggle('show', nearCell()>=0 || nearScene());
     requestAnimationFrame(frame);
   }
 
