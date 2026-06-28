@@ -270,20 +270,20 @@
       }};
     }},
     sequence:{theme:'メカ',make:function(tier,rng){
-      var nb=tier===3?6:4,len=tier===1?3:(tier===2?4:5),memory=tier===3,pal=shuf(rng,COLORS).slice(0,nb).map(function(o){return o.c;});
+      var nb=tier===3?6:4,len=tier===1?3:(tier===2?4:5),pal=shuf(rng,COLORS).slice(0,nb).map(function(o){return o.c;});
       var seq=[];for(var i=0;i<len;i++)seq.push(ri2(rng,nb));
-      return {title:'順番に押す',render:function(card,done){
-        card.innerHTML='<h4>順番に押す'+(memory?'（記憶）':'')+'</h4><div id="ord" style="min-height:20px;margin-bottom:8px;font-size:12px;color:#9fb6d8"></div>'
-          +'<div id="btns" style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap"></div><button class="act" id="pl" style="margin-top:12px">▶ 再生</button>';
-        var btns=card.querySelector('#btns'),ord=card.querySelector('#ord'),pl=card.querySelector('#pl'),playing=false,input=[];
-        var els=pal.map(function(c,i){var d=document.createElement('div');d.textContent=i+1;d.style.cssText='width:44px;height:44px;border-radius:12px;background:'+c+';opacity:.5;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;color:#06121a;transition:.1s';btns.appendChild(d);return d;});
-        function showOrd(){ ord.textContent= memory?'▶再生を見て覚える':('順番: '+seq.map(function(i){return i+1;}).join(' → ')); }
-        function flash(i){els[i].style.opacity='1';els[i].style.transform='scale(1.12)';setTimeout(function(){els[i].style.opacity='.5';els[i].style.transform='none';},320);}
-        pl.onclick=function(){if(playing)return;playing=true;input=[];var k=0;var iv=setInterval(function(){flash(seq[k]);k++;if(k>=seq.length){clearInterval(iv);playing=false;}},470);};
-        els.forEach(function(d,i){d.onclick=function(){if(playing)return;flash(i);input.push(i);
-          if(!input.every(function(v,j){return v===seq[j];})){input=[];ord.textContent='✗ もう一度';setTimeout(showOrd,700);return;}
-          if(input.length===seq.length)setTimeout(done,250);};});
-        showOrd();
+      var spd=tier===1?560:(tier===2?480:400);
+      return {title:'順番に押す（記憶）',render:function(card,done){
+        card.innerHTML='<h4>記憶：再生された順に押す</h4><div id="ord" style="min-height:20px;margin-bottom:8px;font-size:12px;color:#9fb6d8">まず ▶再生 を押して順番を覚える</div>'
+          +'<div id="btns" style="display:flex;justify-content:center;gap:10px;flex-wrap:wrap"></div><button class="act" id="pl" style="margin-top:12px">▶ 再生（'+len+'手）</button>';
+        var btns=card.querySelector('#btns'),ord=card.querySelector('#ord'),pl=card.querySelector('#pl'),playing=false,input=[],shown=false;
+        var els=pal.map(function(c,i){var d=document.createElement('div');d.textContent=i+1;d.style.cssText='width:44px;height:44px;border-radius:12px;background:'+c+';opacity:.45;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:800;color:#06121a;transition:.1s';btns.appendChild(d);return d;});
+        function flash(i){els[i].style.opacity='1';els[i].style.transform='scale(1.14)';setTimeout(function(){els[i].style.opacity='.45';els[i].style.transform='none';},spd*0.6);}
+        pl.onclick=function(){if(playing)return;playing=true;input=[];ord.textContent='よく見て…';var k=0;var iv=setInterval(function(){flash(seq[k]);k++;if(k>=seq.length){clearInterval(iv);playing=false;shown=true;ord.textContent='同じ順に押す';}},spd);};
+        els.forEach(function(d,i){d.onclick=function(){ if(playing)return; if(!shown){ord.textContent='まず ▶再生 で順番を覚えて';SFX.ng();return;}
+          flash(i);SFX.click();input.push(i);
+          if(!input.every(function(v,j){return v===seq[j];})){input=[];SFX.ng();ord.textContent='✗ ちがう。▶再生でやり直し';shown=false;return;}
+          if(input.length===seq.length){SFX.ok();setTimeout(done,250);} };});
       }};
     }}
     ,
@@ -506,7 +506,7 @@
           setTimeout(function(){[].forEach.call(grid.children,function(x){x.style.pointerEvents='';x.style.boxShadow='';});},1500); } };
       grid.appendChild(c); });
   }
-  document.getElementById('eb').onclick=function(){openAccuse();};
+  document.getElementById("eb").onclick=function(){openAccuse();};
   document.getElementById('meetX').onclick=function(){document.getElementById('meet').style.display='none';};
 
   // ---- input ----
