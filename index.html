@@ -129,7 +129,7 @@
 
   <div class="logo">N/I <b>ESCAPE</b></div>
   <div class="pan timer"><small>O2 REMAINING</small><span id="clock">05:00</span></div>
-  <button class="pan eb" id="eb">⚠ 緊急会議</button>
+  <button class="pan eb" id="eb">🔍 告発</button>
   <div class="pan obj"><b>TASKS</b><span id="objn">0 / 4 完了</span></div>
   <div class="pan here" id="here">機関室</div>
   <div class="pan map"><svg id="mapsvg" viewBox="0 0 208 74"></svg></div>
@@ -141,7 +141,7 @@
   <div id="okflash"></div>
   <div id="meet">
     <div class="meetbox">
-      <h3>緊急会議</h3>
+      <h3>🔍 告発</h3>
       <div class="meetres" id="meetRes"></div>
       <div class="meetgrid" id="meetGrid"></div>
       <div class="meetx" id="meetX">閉じる</div>
@@ -365,8 +365,8 @@
   var MODES={any:{label:'おまかせ',ids:null},cipher:{label:'暗号系',ids:['keypad','number','order']},mech:{label:'メカ系',ids:['wiring','sequence','switches','rotate','slider']},obs:{label:'観察系',ids:['observe','uv','match']}};
   var curDiff='normal',curMode='any',curSeed='';
   // ---- 人狼: 容疑者(N/Iメンバー)とインポスター ----
-  var SUSPECTS=[{name:'トラすけ',img:'sus_torasuke.png'},{name:'トラべえ',img:'sus_torabee.png'},{name:'ミツネ',img:'sus_mitsune.png'},{name:'アヤメ',img:'sus_ayame.png'}];
-  var impostor=null, ejected=[], caught=false;
+  var SUSPECTS=[{name:'トラすけ',img:'sus_torasuke.png'},{name:'トラべえ',img:'sus_torabee.png'},{name:'ミツネ',img:'sus_mitsune.png'},{name:'アヤメ',img:'sus_ayame.png'},{name:'オセガ',img:'sus_osega.png'},{name:'オノサ',img:'sus_onosa.png'}];
+  var impostor=null, cleared=[], caught=false, sabCount=0, gameOn=false;
   function makeRun(){
     var seed=curSeed||(''+Date.now()+Math.floor(Math.random()*1e6)); var rng=makeRng(seed);
     var ids=MODES[curMode].ids||ALLIDS, curve=DIFFS[curDiff].curve, per=DIFFS[curDiff].tasks, prev='';
@@ -375,7 +375,7 @@
       for(var c=0;c<per && c<spots.length;c++){ var cand=ids.filter(function(x){return x!==prev;}); if(!cand.length)cand=ids;
         var id=pickR(rng,cand); prev=id; cells.push({x:spots[c].x,d:spots[c].d,puz:PUZZLES[id].make(curve[i],rng),done:false}); }
       roomState[i]={cells:cells}; TOTAL+=cells.length; }
-    impostor=pickR(rng,SUSPECTS); ejected=[]; caught=false;
+    impostor=pickR(rng,SUSPECTS); cleared=[]; caught=false; sabCount=0; sabT=0;
     doneCount=0; objn.textContent='0 / '+TOTAL+' 完了';
   }
   var ri=0, px=50, pd=.5, face=1, t=0, locked=false;
@@ -443,22 +443,34 @@
   }
   document.getElementById('mx').onclick=function(){modal.style.display='none';};
 
-  // ---- 人狼: 緊急会議 → 投票 → 追放 ----
-  function openMeet(){
+  // ---- 探偵: 妨害(サボタージュ)が起きる → 手がかりで無実が判明 → 告発 ----
+  function triggerSabotage(){
+    if(caught) return;
+    sabCount++;
+    sec=Math.max(0,sec-18);                                  // O2リーク
+    // 手がかり: 無実を1人あぶり出す(犯人以外で未確定の中から)
+    var cand=SUSPECTS.filter(function(s){return s.name!==impostor.name && cleared.indexOf(s.name)<0;});
+    var clue=''; if(cand.length>1){ var inn=pickR(makeRng('c'+sabCount+impostor.name),cand); cleared.push(inn.name); clue='手がかり: '+inn.name+' にはアリバイがあった（無実）'; }
+    else clue='ほぼ特定できたはず…';
+    SFX.eject(); toast('⚠ サボタージュ発生！ O2が漏れている');
+    openAccuse(clue);
+  }
+  function openAccuse(clue){
     var meet=document.getElementById('meet'),grid=document.getElementById('meetGrid'),res=document.getElementById('meetRes');
-    meet.style.display='flex'; res.innerHTML='誰が裏切り者だ？ 1人を選んで投票'; grid.innerHTML='';
-    var remain=SUSPECTS.filter(function(s){return ejected.indexOf(s.name)<0;});
-    if(caught||!remain.length){ res.innerHTML='裏切り者はもういない。'; }
-    remain.forEach(function(s){ var c=document.createElement('div'); c.className='suscard';
-      c.innerHTML='<img src="'+s.img+'"><span>'+s.name+'</span>';
-      c.onclick=function(){ [].forEach.call(grid.children,function(x){x.style.pointerEvents='none';}); SFX.click(); ejected.push(s.name);
-        if(s.name===impostor.name){ caught=true; SFX.eject(); c.style.boxShadow='0 0 24px #ff5a5a'; res.innerHTML='⚠ <b>'+s.name+'</b> は裏切り者だった！ 追放成功 🎉';
-          setTimeout(function(){meet.style.display='none';toast('裏切り者を追放した！');},2300); }
-        else { SFX.ng(); c.style.opacity='.4'; sec=Math.max(0,sec-20); res.innerHTML=s.name+' は無実だった…（O2 −20秒）';
+    meet.style.display='flex'; grid.innerHTML='';
+    if(caught){ res.innerHTML='裏切り者は確保済み。妨害は止まっている。'; }
+    else res.innerHTML=(clue?'<b style="color:#7dffb0">'+clue+'</b><br>':'')+'妨害している裏切り者を告発せよ（無実は除外済み）';
+    SUSPECTS.forEach(function(s){ var c=document.createElement('div'); c.className='suscard'; var isClear=cleared.indexOf(s.name)>=0;
+      c.innerHTML='<img src="'+s.img+'"><span>'+s.name+'</span>'+(isClear?'<span style="display:block;font-size:10px;color:#7d8aa6">無実</span>':'');
+      if(isClear||caught){ c.style.opacity='.35'; c.style.pointerEvents='none'; }
+      c.onclick=function(){ if(caught)return; [].forEach.call(grid.children,function(x){x.style.pointerEvents='none';}); SFX.click();
+        if(s.name===impostor.name){ caught=true; SFX.eject(); c.style.boxShadow='0 0 24px #7dffb0'; res.innerHTML='⚠ <b>'+s.name+'</b> が裏切り者だった！ 確保成功 🎉 妨害が止まった';
+          setTimeout(function(){meet.style.display='none';toast('裏切り者を確保！もう妨害されない');},2400); }
+        else { SFX.ng(); c.style.opacity='.35'; cleared.push(s.name); sec=Math.max(0,sec-25); res.innerHTML='❌ '+s.name+' は無実だった…（誤認逮捕 O2 −25秒）';
           setTimeout(function(){meet.style.display='none';},2000); } };
       grid.appendChild(c); });
   }
-  document.getElementById('eb').onclick=openMeet;
+  document.getElementById('eb').onclick=function(){openAccuse('');};
   document.getElementById('meetX').onclick=function(){document.getElementById('meet').style.display='none';};
 
   // ---- input ----
@@ -519,10 +531,15 @@
     requestAnimationFrame(frame);
   }
 
-  // O2 timer（開始後に作動）
-  var sec=300,clk=document.getElementById('clock'),timerStarted=false;
+  // O2 timer ＆ サボタージュ（開始後に作動）
+  var sec=300,sabT=0,clk=document.getElementById('clock'),timerStarted=false;
+  function modalsOpen(){return modal.style.display==='flex'||document.getElementById('meet').style.display==='flex'||document.getElementById('win').style.display==='flex';}
   function startTimer(){ if(timerStarted)return; timerStarted=true;
-    setInterval(function(){if(sec>0)sec--;var m=Math.floor(sec/60),s=sec%60;clk.textContent=m+':'+(s<10?'0':'')+s;},1000); }
+    setInterval(function(){ if(sec>0)sec--; var m=Math.floor(sec/60),s=sec%60;clk.textContent=m+':'+(s<10?'0':'')+s;
+      if(sec<=0&&!document.getElementById('win').style.display){ /* O2切れ: ゲームオーバー扱いは今は注意のみ */ }
+      // サボタージュ: 一定間隔で発生(モーダル中/確保後は進めない)
+      if(gameOn&&!caught&&!modalsOpen()){ sabT++; if(sabT>=38){ sabT=0; triggerSabotage(); } }
+    },1000); }
 
   // ---- スタート画面: 難易度＋モード選択 → ラン生成 → 開始 ----
   (function start(){
@@ -535,7 +552,7 @@
     document.getElementById('playBtn').onclick=function(){
       curSeed=(seedIn.value||'').trim(); makeRun();
       document.getElementById('start').style.display='none';
-      ri=0; px=50; pd=.5; bg.classList.add('on'); loadRoom(); startTimer();
+      ri=0; px=50; pd=.5; gameOn=true; bg.classList.add('on'); loadRoom(); startTimer();
       if(!window.__loopOn){window.__loopOn=true; requestAnimationFrame(frame);}
     };
   })();
