@@ -234,17 +234,31 @@
     wiring:{theme:'メカ',make:function(tier,rng){
       var n=tier===1?3:(tier===2?4:5),cols=shuf(rng,COLORS).slice(0,n).map(function(o){return o.c;}),left=shuf(rng,cols),right=shuf(rng,cols);
       return {title:'配線をつなぐ',render:function(card,done){
-        card.innerHTML='<h4>配線：同じ色を結べ</h4><div id="wrap" style="display:flex;justify-content:center;gap:46px;padding:6px 10px"></div>';
-        var wrap=card.querySelector('#wrap'),L=document.createElement('div'),R=document.createElement('div');
-        L.style.cssText=R.style.cssText='display:flex;flex-direction:column;gap:11px';var sel=null,dc=0;
-        function node(color,side){var d=document.createElement('div');d.style.cssText='width:40px;height:40px;border-radius:10px;background:'+color+';cursor:pointer;border:3px solid transparent;transition:.15s';
-          d.onclick=function(){ if(d.dataset.done)return;
-            if(side==='L'){ if(sel)sel.style.borderColor='transparent'; sel=d; d.style.borderColor='#fff'; }
-            else if(sel){ if(sel.style.background===d.style.background){ sel.dataset.done=d.dataset.done='1'; sel.style.borderColor=d.style.borderColor='#7dffb0'; sel.style.opacity=d.style.opacity='.5'; sel=null; if(++dc===n)setTimeout(done,300); }
-              else { var s=sel;d.style.borderColor='#ff5a5a';setTimeout(function(){d.style.borderColor='transparent';s.style.borderColor='transparent';},300);sel=null; } } };
-          return d;}
-        left.forEach(function(c){L.appendChild(node(c,'L'));});right.forEach(function(c){R.appendChild(node(c,'R'));});
-        wrap.appendChild(L);wrap.appendChild(R);
+        card.innerHTML='<h4>配線：同じ色をドラッグでつなぐ</h4><div style="font-size:11px;color:#9fb6d8;margin-bottom:10px">左の端子から、同じ色の右の端子へドラッグ</div><div id="wcon" style="position:relative;margin:0 auto;touch-action:none"></div>';
+        var con=card.querySelector('#wcon'),S=42,RH=56,W=272,LX=12,RX=W-12-S;
+        con.style.width=W+'px'; con.style.height=(n*RH)+'px';
+        var NS='http://www.w3.org/2000/svg',svg=document.createElementNS(NS,'svg');
+        svg.setAttribute('width',W);svg.setAttribute('height',n*RH);svg.style.cssText='position:absolute;inset:0;pointer-events:none';con.appendChild(svg);
+        function ctr(side,i){return [(side==='L'?LX:RX)+S/2, i*RH+S/2];}
+        function mk(color,side,i){var d=document.createElement('div');d.style.cssText='position:absolute;width:'+S+'px;height:'+S+'px;border-radius:11px;background:'+color+';top:'+(i*RH)+'px;left:'+(side==='L'?LX:RX)+'px;border:3px solid rgba(255,255,255,.18);touch-action:none'+(side==='L'?';cursor:grab':'');d.dataset.color=color;d.dataset.i=i;d.dataset.side=side;con.appendChild(d);return d;}
+        var lefts=left.map(function(c,i){return mk(c,'L',i);}),rights=right.map(function(c,i){return mk(c,'R',i);});
+        var drag=null,tmp=null,conns=0;
+        function down(d,e){ if(d.dataset.done)return; e.preventDefault(); var i=+d.dataset.i,c0=ctr('L',i);
+          drag={el:d,color:d.dataset.color}; tmp=document.createElementNS(NS,'line');
+          tmp.setAttribute('x1',c0[0]);tmp.setAttribute('y1',c0[1]);tmp.setAttribute('x2',c0[0]);tmp.setAttribute('y2',c0[1]);
+          tmp.setAttribute('stroke',d.dataset.color);tmp.setAttribute('stroke-width','7');tmp.setAttribute('stroke-linecap','round');svg.appendChild(tmp);
+          d.setPointerCapture&&d.setPointerCapture(e.pointerId); SFX.click(); }
+        function move(e){ if(!drag)return; var r=con.getBoundingClientRect();tmp.setAttribute('x2',e.clientX-r.left);tmp.setAttribute('y2',e.clientY-r.top); }
+        function up(e){ if(!drag)return; var r=con.getBoundingClientRect(),mx=e.clientX-r.left,my=e.clientY-r.top,hit=null;
+          rights.forEach(function(re,j){var x=RX,y=j*RH;if(mx>=x-6&&mx<=x+S+6&&my>=y-6&&my<=y+S+6)hit={el:re,j:j};});
+          if(hit&&!hit.el.dataset.done&&hit.el.dataset.color===drag.color){var c1=ctr('R',hit.j);tmp.setAttribute('x2',c1[0]);tmp.setAttribute('y2',c1[1]);
+            drag.el.dataset.done=hit.el.dataset.done='1';drag.el.style.borderColor=hit.el.style.borderColor='#7dffb0';drag.el.style.cursor='default';SFX.ok();
+            if(++conns===n)setTimeout(done,350);}
+          else{svg.removeChild(tmp);SFX.ng();}
+          drag=null;tmp=null; }
+        lefts.forEach(function(d){d.addEventListener('pointerdown',function(e){down(d,e);});});
+        con.addEventListener('pointermove',move); con.addEventListener('pointerup',up);
+        con.addEventListener('pointercancel',function(){if(drag&&tmp){svg.removeChild(tmp);drag=null;tmp=null;}});
       }};
     }},
     sequence:{theme:'メカ',make:function(tier,rng){
