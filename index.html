@@ -105,7 +105,10 @@
   .suscard:hover{transform:translateY(-3px);border-color:#ff6a8e}
   .suscard img{width:78px;height:104px;object-fit:contain;display:block;margin:0 auto}
   .suscard span{display:block;font-size:13px;font-weight:700;color:#eaf2ff;margin-top:4px}
-  .meetx{margin-top:16px;display:inline-block;cursor:pointer;color:#9fb0d0;font-size:13px;border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:7px 18px}
+  #accuseBtn{margin-top:16px;display:inline-block;cursor:pointer;background:linear-gradient(180deg,#ff4d7e,#d11d52);border:none;border-radius:24px;
+    padding:12px 28px;color:#fff;font-weight:800;font-size:15px;box-shadow:0 5px 0 #9a1640}
+  #accuseBtn:active{transform:translateY(3px);box-shadow:0 2px 0 #9a1640}
+  .meetx{margin-top:10px;display:block;cursor:pointer;color:#9fb0d0;font-size:13px;border:1px solid rgba(255,255,255,.2);border-radius:20px;padding:7px 18px;width:fit-content;margin-left:auto;margin-right:auto}
   #start{position:absolute;inset:0;z-index:50;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;
     background:radial-gradient(circle at 50% 35%,#142747,#070b18 70%);text-align:center;padding:24px}
   #start h1{font-size:46px;letter-spacing:.1em;color:#eaf2ff;text-shadow:0 3px 0 #19324a}
@@ -150,7 +153,8 @@
       <h3>🔍 告発</h3>
       <div class="meetres" id="meetRes"></div>
       <div class="meetgrid" id="meetGrid"></div>
-      <div class="meetx" id="meetX">閉じる</div>
+      <button id="accuseBtn">🚨 ◯の人物を告発する</button>
+      <div class="meetx" id="meetX">閉じる（捜査を続ける）</div>
     </div>
   </div>
   <div id="toast"></div>
@@ -381,18 +385,18 @@
     {name:'オセガ',  img:'sus_osega.png?v=2',   color:'緑',sun:true, build:'標準'},
     {name:'オノサ',  img:'sus_onosa.png?v=2',   color:'赤',sun:false,build:'筋肉'}
   ];
-  var impostor=null, clues=[], foundClues=[], scene=null, caught=false, sabCount=0, gameOn=false;
-  // 犯人を一意に特定できる手がかり列を生成(見える特徴のみ: サングラス→体格→色)
+  var impostor=null, clues=[], foundClues=[], scene=null, caught=false, sabCount=0, gameOn=false, marks={};
+  // 手がかり=「特徴(間接)」＋「名指しのアリバイ」の混在。プレイヤーが組み合わせて1人に絞る(考察)
+  // 手がかり=「サングラス特徴」＋「色は〇〇でない」or「〇〇は無実」の混在(3手)。複数種を組み合わせて1人に絞る(考察)
   function genClues(imp){
-    var cands=SUSPECTS.slice(), out=[];
-    var steps=[
-      {k:'sun',  q:imp.sun?'犯人は「サングラス」をかけていた':'犯人は「サングラス」をしていなかった'},
-      {k:'build',q:imp.build==='筋肉'?'犯人は「がっしりした体格」だった':'犯人は「標準体型」だった'},
-      {k:'color',q:'犯人の体の色は「'+imp.color+'」だ'}
-    ];
-    steps.forEach(function(st){ if(cands.length<=1)return; var nc=cands.filter(function(s){return s[st.k]===imp[st.k];}); if(nc.length<cands.length){cands=nc; out.push(st.q);} });
-    if(cands.length>1) out.push('犯人の体の色は「'+imp.color+'」だ');
-    return out;
+    var rng=makeRng('cl'+imp.name);
+    var out=['犯人は「サングラス」を'+(imp.sun?'かけていた':'していなかった')]; // 同じサングラス状態の3人に絞れる
+    var others=SUSPECTS.filter(function(s){return s.sun===imp.sun && s.name!==imp.name;}); // 残り2人を別タイプの手がかりで除外
+    others.forEach(function(s){
+      if(ri2(rng,2)===0) out.push('現場に残った毛は「'+s.color+'」ではなかった（犯人の色は「'+s.color+'」ではない）');
+      else out.push(s.name+'は事件当時、別室でアリバイが確認された（無実）');
+    });
+    return shuf(rng,out);
   }
   function makeRun(){
     var seed=curSeed||(''+Date.now()+Math.floor(Math.random()*1e6)); var rng=makeRng(seed);
@@ -402,7 +406,7 @@
       for(var c=0;c<per && c<spots.length;c++){ var cand=ids.filter(function(x){return x!==prev;}); if(!cand.length)cand=ids;
         var id=pickR(rng,cand); prev=id; cells.push({x:spots[c].x,d:spots[c].d,puz:PUZZLES[id].make(curve[i],rng),done:false}); }
       roomState[i]={cells:cells}; TOTAL+=cells.length; }
-    impostor=pickR(rng,SUSPECTS); clues=genClues(impostor); foundClues=[]; scene=null; caught=false; sabCount=0; sabT=0;
+    impostor=pickR(rng,SUSPECTS); clues=genClues(impostor); foundClues=[]; scene=null; caught=false; sabCount=0; sabT=0; marks={};
     doneCount=0; objn.textContent='0 / '+TOTAL+' 完了';
   }
   var ri=0, px=50, pd=.5, face=1, t=0, locked=false, escWarn=false;
@@ -495,21 +499,34 @@
   }
   function susTag(s){ return '<div style="font-size:10px;color:#9fb6d8;margin-top:2px;line-height:1.45">'+s.color+'／サングラス'+(s.sun?'有':'無')+'／'+s.build+'</div>'; }
   function openAccuse(){
-    var meet=document.getElementById('meet'),grid=document.getElementById('meetGrid'),res=document.getElementById('meetRes');
+    var meet=document.getElementById('meet'),grid=document.getElementById('meetGrid'),res=document.getElementById('meetRes'),ab=document.getElementById('accuseBtn');
     meet.style.display='flex'; grid.innerHTML='';
-    if(caught){ res.innerHTML='裏切り者は確保済み。妨害は止まっている。'; }
-    else { var log=foundClues.length?('<div style="text-align:left;display:inline-block">'+foundClues.map(function(c){return '・'+c;}).join('<br>')+'</div>'):'まだ手がかりが無い。現場(🔍)を調べよう。';
-      res.innerHTML='<div style="font-size:12px;color:#7fe9d6;letter-spacing:.1em;margin-bottom:4px">集めた証拠</div>'+log+'<div style="font-size:12px;color:#bcd6f5;margin-top:8px">手がかりと特徴を照合し、犯人を指名（誤認はO2−25）</div>'; }
+    if(caught){ res.innerHTML='裏切り者は確保済み。妨害は止まっている。'; ab.style.display='none'; }
+    else { ab.style.display='inline-block';
+      var log=foundClues.length?('<div style="text-align:left;display:inline-block">'+foundClues.map(function(c){return '・'+c;}).join('<br>')+'</div>'):'まだ手がかりが無い。現場(🔍)を調べよう。';
+      res.innerHTML='<div style="font-size:12px;color:#7fe9d6;letter-spacing:.1em;margin-bottom:4px">集めた証拠('+foundClues.length+')</div>'+log
+        +'<div style="font-size:12px;color:#bcd6f5;margin-top:8px">各容疑者をタップして <b style="color:#ff8aa6">✕除外</b>/<b style="color:#7dffb0">◯怪しい</b> をメモ → 1人を◯にして【告発】</div>'; }
+    function paint(c,s){ var m=marks[s.name];
+      c.style.boxShadow = m==='o'?'0 0 0 3px #7dffb0 inset':(m==='x'?'0 0 0 3px #ff5a5a inset':'none');
+      c.style.opacity = m==='x'?'.4':'1';
+      var badge=c.querySelector('.nb'); badge.textContent = m==='o'?'◯':(m==='x'?'✕':'');
+      badge.style.color = m==='o'?'#7dffb0':'#ff5a5a'; }
     SUSPECTS.forEach(function(s){ var c=document.createElement('div'); c.className='suscard';
-      c.innerHTML='<img src="'+s.img+'"><span>'+s.name+'</span>'+susTag(s);
-      if(caught){ c.style.opacity='.4'; c.style.pointerEvents='none'; }
-      c.onclick=function(){ if(caught)return; [].forEach.call(grid.children,function(x){x.style.pointerEvents='none';}); SFX.click();
-        if(s.name===impostor.name){ caught=true; SFX.eject(); c.style.boxShadow='0 0 24px #7dffb0'; res.innerHTML='⚠ <b>'+s.name+'</b> が裏切り者だった！ 確保成功 🎉 妨害が止まった';
-          setTimeout(function(){meet.style.display='none';toast('裏切り者を確保！脱出可能に');},2400); }
-        else { SFX.ng(); c.style.boxShadow='0 0 20px #ff5a5a'; sec=Math.max(0,sec-25); res.innerHTML='❌ '+s.name+' は犯人ではなかった…（誤認逮捕 O2 −25秒）証拠を見直せ';
-          setTimeout(function(){[].forEach.call(grid.children,function(x){x.style.pointerEvents='';x.style.boxShadow='';});},1500); } };
+      c.innerHTML='<div class="nb" style="position:absolute;top:4px;right:8px;font-size:20px;font-weight:900"></div><img src="'+s.img+'"><span>'+s.name+'</span>'+susTag(s);
+      c.style.position='relative'; paint(c,s);
+      if(caught){ c.style.pointerEvents='none'; }
+      c.onclick=function(){ if(caught)return; SFX.click(); marks[s.name]= marks[s.name]==='x'?'o':(marks[s.name]==='o'?undefined:'x'); paint(c,s); };
       grid.appendChild(c); });
   }
+  function doAccuse(){
+    if(caught)return; var picks=SUSPECTS.filter(function(s){return marks[s.name]==='o';});
+    if(picks.length!==1){ toast('犯人だと思う容疑者を1人だけ ◯ にしてから告発しよう'); return; }
+    var s=picks[0], res=document.getElementById('meetRes'), meet=document.getElementById('meet');
+    if(s.name===impostor.name){ caught=true; SFX.eject(); res.innerHTML='⚠ <b>'+s.name+'</b> が裏切り者だった！ 確保成功 🎉 妨害が止まった'; document.getElementById('accuseBtn').style.display='none';
+      setTimeout(function(){meet.style.display='none';toast('裏切り者を確保！脱出可能に');},2400); }
+    else { SFX.ng(); sec=Math.max(0,sec-25); marks[s.name]=undefined; res.innerHTML='❌ '+s.name+' は犯人ではなかった…（誤認逮捕 O2 −25秒）証拠を見直せ'; setTimeout(openAccuse,1400); }
+  }
+  document.getElementById('accuseBtn').onclick=doAccuse;
   document.getElementById("eb").onclick=function(){openAccuse();};
   document.getElementById('meetX').onclick=function(){document.getElementById('meet').style.display='none';};
 
