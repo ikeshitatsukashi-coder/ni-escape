@@ -365,7 +365,7 @@
   var MODES={any:{label:'おまかせ',ids:null},cipher:{label:'暗号系',ids:['keypad','number','order']},mech:{label:'メカ系',ids:['wiring','sequence','switches','rotate','slider']},obs:{label:'観察系',ids:['observe','uv','match']}};
   var curDiff='normal',curMode='any',curSeed='';
   // ---- 人狼: 容疑者(N/Iメンバー)とインポスター ----
-  var SUSPECTS=[{name:'トラすけ',img:'sus_torasuke.png'},{name:'トラべえ',img:'sus_torabee.png'},{name:'ミツネ',img:'sus_mitsune.png'},{name:'アヤメ',img:'sus_ayame.png'},{name:'オセガ',img:'sus_osega.png'},{name:'オノサ',img:'sus_onosa.png'}];
+  var SUSPECTS=[{name:'トラすけ',img:'sus_torasuke.png?v=2'},{name:'トラべえ',img:'sus_torabee.png?v=2'},{name:'ミツネ',img:'sus_mitsune.png?v=2'},{name:'アヤメ',img:'sus_ayame.png?v=2'},{name:'オセガ',img:'sus_osega.png?v=2'},{name:'オノサ',img:'sus_onosa.png?v=2'}];
   var impostor=null, cleared=[], caught=false, sabCount=0, gameOn=false;
   function makeRun(){
     var seed=curSeed||(''+Date.now()+Math.floor(Math.random()*1e6)); var rng=makeRng(seed);
